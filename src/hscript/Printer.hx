@@ -343,6 +343,7 @@ class Printer {
 			case EInvalidAccess(f): "Invalid access to field " + f;
 			case ECustom(msg): msg;
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"v\"" + ".";
+			case EUnmatcingType(v,t): "Type declaration (" + "\"" + t + "\"" + ") for " + "\"" + v + "\"" + " is invalid or unmatched.";
 		};
 		#if hscriptPos
 		return e.origin + ":" + e.line + ": " + message;

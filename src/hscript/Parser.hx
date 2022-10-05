@@ -1113,8 +1113,9 @@ class Parser {
 						unexpected(t);
 						break;
 					}
-				} else
+				} else {
 					push(t);
+				}
 			default:
 				push(t);
 			}

@@ -315,7 +315,7 @@ class Interp {
 		if( l != null )
 			return l.r;
 		var v = variables.get(id);
-		if( v == null && !variables.exists(id) )
+		if(v==null&&!variables.exists(id))
 			error(EUnknownVariable(id));
 		return v;
 	}
@@ -337,7 +337,43 @@ class Interp {
 			}
 		case EIdent(id):
 			return resolve(id);
-		case EVar(n,_,e):
+		case EVar(n,t,e):
+			var cls = [];
+			switch(t)
+			{
+				case CTPath(p,pr):
+					cls = p;
+					if(pr!=null)
+					{
+						for(i in 0...pr.length)
+						{
+							var ct = pr[i];
+							switch(ct)
+							{
+								case CTPath(pn, prn):
+									for(pnn in pn)	
+									cls.push(pnn);
+									for(pnn in prn)
+									{
+										var n:Dynamic = pnn.getParameters()[0];
+										while(true)
+										{
+											if(!(n is Array))
+												break;
+
+											n=n[0];
+										}
+										cls.push(n);
+									}
+									default:
+							}
+						}
+					}
+				default:
+			}
+			for(cl in cls)
+				if(Type.resolveClass(cl)==null&&!variables.exists(cl))
+					error(EUnmatcingType(n,cl));
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) });
 			return null;

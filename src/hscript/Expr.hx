@@ -120,6 +120,7 @@ enum Error {
 	EInvalidIterator( v : String );
 	EInvalidOp( op : String );
 	EInvalidAccess( f : String );
+	EUnmatcingType( v : String , t : String );
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
 }
