@@ -945,6 +945,7 @@ class Parser {
 				{
 					eclass = Type.resolveClass(anPath[0]);
 					cl = nulls[nulls.length - 1];
+
 					if(maybe&&''+asIdent!="null")
 						cl=asIdent;
 				}
