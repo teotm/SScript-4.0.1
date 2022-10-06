@@ -83,7 +83,7 @@ class Parser {
 	/**
 		resume from parsing errors (when parsing incomplete code, during completion for example)
 	**/
-	public var resumeErrors : Bool = true;
+	public var resumeErrors : Bool;
 
 	// implementation
 	var input : String;
@@ -914,51 +914,67 @@ class Parser {
 
 			var cl:String = null;
 			var eclass = null;
-			if (path.length > 1)
+			var maybe = maybe(TId("as"));
+			var asIdent = null;
+
+			if(maybe)asIdent = getIdent();
+
+			if(maybe&&''+asIdent=="null")
+				unexpected(TId("as"));
+
+			if(path.length > 1)
 			{
 				var c:Class<Dynamic> = Type.resolveClass(anPath[0]);
 				var property:Dynamic = Reflect.getProperty(c, path[0]);
 				
-				for (i in 1...path.length - 1)
+				for(i in 1...path.length - 1)
 				{
 					property = Reflect.getProperty(property, path[i]);
 				}
 
 				cl = path[path.length - 1];
+				if(asIdent!=null&&maybe)
+					cl=asIdent;
 				property = Reflect.getProperty(property, cl);
 
 				EImport( property, cl );
 			}
 			else 
 			{
-				if (path.length == 0)
+				if(path.length == 0)
 				{
 					eclass = Type.resolveClass(anPath[0]);
 					cl = nulls[nulls.length - 1];
+					if(asIdent!=null&&maybe)
+						cl=asIdent;
 				}
 				else 
 				{
-					if (path[0].startsWith(path[0].substring(0, 1).toLowerCase()))
+					if(path[0].startsWith(path[0].substring(0, 1).toLowerCase()))
 					{
 						eclass = Type.resolveClass(anPath[0]);
 						var prop = Reflect.getProperty(eclass, path[0]);
 						eclass = prop;
 						cl = path[0];
+						if(asIdent!=null&&maybe)
+							cl=asIdent;
 					}
 					else
 					{
 						cl = path[0];
 						eclass = Type.resolveClass(cl);
+						if(asIdent!=null&&maybe)
+							cl=asIdent;
 					}
 				}
 			}
 			
 			mk(EImport( eclass , cl));
 		case 'package': //ignore package since it is useless in hscript
-			if (packaged)
+			if(packaged)
 				throw new Exception('Cannot use "package" twice!');
 
-			packaged = true;
+			//packaged = true;
 			mk(EPackage);
 		default:
 			null;
