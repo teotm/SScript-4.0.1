@@ -2,6 +2,7 @@ package;
 
 import haxe.Constraints;
 import hscript.*;
+import hscript.Expr;
 
 import sys.FileSystem;
 import sys.io.File;
@@ -97,7 +98,10 @@ class SScript
         global.set(scriptFile, this);
 
         interp = new Interp();
+        interp.setScr(this);
+
         parser = new Parser();
+        parser.script = this;
 
         if (preset)
             this.preset();
@@ -199,7 +203,7 @@ class SScript
         
         @param func Function name in script file. 
         @param args Arguments for the `func`.
-        @return Returns the return value in the function. If the function is `Void` returns the function itself.
+        @return Returns the return value in the function. If the function is `Void` returns null.
      **/
     public function call(func:String, args:Array<Dynamic>):Dynamic
     {
@@ -267,6 +271,25 @@ class SScript
     }
 
     /**
+        Triggers itself when the script fails to execute.
+        Generally happens because of script errors.
+
+        When triggered, calls the function named `errorThrow` (if exists) in the script.
+        `errorThrow` must return `null` or nothing, if is not null it immediately stops itself from running
+        and throws an exception.
+
+        Always returns null and cannot be overriden.
+    **/
+    final public function error(err:Error)
+    {
+        var call:Dynamic = call('errorThrow', [err]);
+        if (call != null)
+            throw '"errorThrow" must return null or nothing.';
+        call = null;
+        return call;
+    }
+
+    /**
         Tells if any of the keys in `keys` array exist in `interp`.
 
         If one key or more exist in `interp` returns true.
@@ -304,6 +327,7 @@ class SScript
 
     /**
         Sets some useful variables to interp to make easier using this script.
+        Override this function to set your custom sets aswell.
     **/
     public function preset():Void
     {
@@ -319,6 +343,8 @@ class SScript
         set('NaN', 0 / 0);
         set('File', File);
         set('FileSystem', FileSystem);
+        set('this', this);
+        set('SScript', SScript);
     }
 
     /**
@@ -341,17 +367,13 @@ class SScript
 
     /**
         Sets a variable in every SScript ever created.
-        
-        @return Returns `global`.
     **/
-    public static function setInGlobal(key:String, obj:Null<Dynamic>):Map<String, SScript>
+    public static function setInGlobal(key:String, obj:Null<Dynamic>):Void
     {
         for (i in global)
         {
             i.set(key, obj);
         }
-
-        return global;
     }
 
     /**

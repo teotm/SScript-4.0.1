@@ -58,6 +58,8 @@ class Parser {
 	public var opRightAssoc : Hash<Bool>;
 	#end
 
+	public var script:SScript;
+
 	@:noPrivateAccess var packaged : Bool;
 
 	/**
@@ -129,7 +131,7 @@ class Parser {
 			["&&"],
 			["||"],
 			["=","+=","-=","*=","/=","%=","<<=",">>=",">>>=","|=","&=","^=","=>"],
-			["->"]
+			["->"],
 		];
 		#if haxe3
 		opPriority = new Map();
@@ -148,6 +150,9 @@ class Parser {
 	}
 
 	public inline function error( err, pmin, pmax ) {
+		var e=#if hscriptPos new Error(err, pmin, pmax, origin, line) #else err #end;
+		if( script!=null&&script.active )
+			script.error(e);
 		if( !resumeErrors )
 		#if hscriptPos
 		throw new Error(err, pmin, pmax, origin, line);
@@ -893,16 +898,21 @@ class Parser {
 					//path.remove(i);
 					int++;
 				}
-				else if (i == i.toLowerCase() && path.indexOf(i) != 0 && path.indexOf(i) == int)
+				else if (i == i.toLowerCase() && path.indexOf(i) == int)
 				{
 					anPath[0] += '$i.';
 					//path.remove(i);
 					int++;
 				}
-				else if (path.indexOf(i) == int)
+				else if (path.indexOf(i) == int && path.indexOf(i) != 0)
 				{
 					anPath[0] += i;
 					//path.remove(i);
+				}
+				else if (path.indexOf(i) == int && int == 0)
+				{
+					anPath[0] = "";
+					anPath[0]+=i;
 				}
 			}
 
@@ -912,17 +922,17 @@ class Parser {
 				if (path.contains(i))
 					path.remove(i);
 
-			var cl:String = null;
-			var eclass = null;
-			var maybe = maybe(TId("as"));
-			var asIdent = null;
+			var maybe=maybe(TId("as"));
+			var asIdent:String=null;
 
-			if(maybe)asIdent = getIdent();
+			if(maybe)asIdent=getIdent();
 
-			if(maybe&&''+asIdent=="null")
+			if(maybe&&""+asIdent=="null")
 				unexpected(TId("as"));
 
-			if(path.length > 1)
+			var cl:String = null;
+			var eclass:Dynamic = null;
+			if (path.length > 1)
 			{
 				var c:Class<Dynamic> = Type.resolveClass(anPath[0]);
 				var property:Dynamic = Reflect.getProperty(c, path[0]);
@@ -933,9 +943,9 @@ class Parser {
 				}
 
 				cl = path[path.length - 1];
+				property = Reflect.getProperty(property, cl);
 				if(maybe&&''+asIdent!="null")
 					cl=asIdent;
-				property = Reflect.getProperty(property, cl);
 
 				EImport( property, cl );
 			}
@@ -944,8 +954,8 @@ class Parser {
 				if(path.length == 0)
 				{
 					eclass = Type.resolveClass(anPath[0]);
+					if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
 					cl = nulls[nulls.length - 1];
-
 					if(maybe&&''+asIdent!="null")
 						cl=asIdent;
 				}
@@ -954,18 +964,35 @@ class Parser {
 					if(path[0].startsWith(path[0].substring(0, 1).toLowerCase()))
 					{
 						eclass = Type.resolveClass(anPath[0]);
+						if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
 						var prop = Reflect.getProperty(eclass, path[0]);
 						eclass = prop;
 						cl = path[0];
 						if(maybe&&''+asIdent!="null")
 							cl=asIdent;
 					}
-					else
+					if (path[0].startsWith(path[0].substring(0, 1).toUpperCase()))
 					{
+						try{
+						eclass = Type.resolveClass(anPath[0]);
+						if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
+						var prop = Reflect.getProperty(eclass, path[0]);
+						eclass = prop;
 						cl = path[0];
-						eclass = Type.resolveClass(cl);
 						if(maybe&&''+asIdent!="null")
-							cl=asIdent;
+						cl=asIdent;}
+						catch(e){
+							try{
+								cl = path[0];
+								eclass = Type.resolveClass(cl);
+								if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
+								if(maybe&&''+asIdent!="null")
+									cl=asIdent;
+							}
+							catch(ec){
+								throw ec;
+							}
+						}
 					}
 				}
 			}

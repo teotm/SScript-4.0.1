@@ -48,9 +48,16 @@ class Interp {
 	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool } }>;
 	var returnValue : Dynamic;
 
+	var script : SScript;
+
 	#if hscriptPos
 	var curExpr : Expr;
 	#end
+
+	public inline function setScr(s)
+	{
+		return script = s;
+	}
 
 	public function new() {
 		#if haxe3
@@ -129,7 +136,6 @@ class Interp {
 		assignOp(">>=",function(v1,v2) return v1 >> v2);
 		assignOp(">>>=",function(v1,v2) return v1 >>> v2);
 	}
-
 	function setVar( name : String, v : Dynamic ) {
 		variables.set(name, v);
 	}
@@ -298,6 +304,7 @@ class Interp {
 
 	inline function error(e : #if hscriptPos ErrorDef #else Error #end, rethrow=false ) : Dynamic {
 		#if hscriptPos var e = new Error(e, curExpr.pmin, curExpr.pmax, curExpr.origin, curExpr.line); #end
+		if( script.interp!=null&&script.active ) script.error(e);
 		if( rethrow ) this.rethrow(e) else throw e;
 		return null;
 	}
