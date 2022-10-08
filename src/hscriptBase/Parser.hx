@@ -35,7 +35,8 @@ enum Token {
 	TBrClose;
 	TDot;
 	TComma;
-	TSemicolon;
+	TStatement;
+	TEol;
 	TBkOpen;
 	TBkClose;
 	TQuestion;
@@ -311,7 +312,7 @@ class Parser {
 			tk = token();
 		}
 
-		if( tk != TSemicolon && tk != TEof ) {
+		if( tk != TStatement && tk != TEof ) {
 			if( isBlock(e) )
 				push(tk);
 			else
@@ -673,7 +674,7 @@ class Parser {
 			var e2 = null;
 			var semic = false;
 			var tk = token();
-			if( tk == TSemicolon ) {
+			if( tk == TStatement ) {
 				semic = true;
 				tk = token();
 			}
@@ -681,7 +682,7 @@ class Parser {
 				e2 = parseExpr();
 			else {
 				push(tk);
-				if( semic ) push(TSemicolon);
+				if( semic ) push(TStatement);
 			}
 			mk(EIf(cond,e1,e2),p1,(e2 == null) ? tokenMax : pmax(e2));
 		case "var":
@@ -696,7 +697,7 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
-				case TComma | TSemicolon: push(tk);
+				case TComma | TStatement: push(tk);
 				default: unexpected(tk);
 			}
 			mk(EVar(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
@@ -712,7 +713,7 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
-				case TComma | TSemicolon: push(tk);
+				case TComma | TStatement: push(tk);
 				default: unexpected(tk);
 			}
 			mk(EFinal(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
@@ -800,7 +801,7 @@ class Parser {
 		case "return":
 			var tk = token();
 			push(tk);
-			var e = if( tk == TSemicolon ) null else parseExpr();
+			var e = if( tk == TStatement ) null else parseExpr();
 			mk(EReturn(e),p1,if( e == null ) tokenMax else pmax(e));
 		case "new":
 			var a = new Array();
@@ -826,16 +827,20 @@ class Parser {
 			var e = parseExpr();
 			ensureToken(TId("catch"));
 			ensure(TPOpen);
-			var vname = getIdent();
-			ensure(TDoubleDot);
+			var cname = getIdent();
 			var t = null;
-			if( allowTypes )
-				t = parseType();
-			else
-				ensureToken(TId("Dynamic"));
-			ensure(TPClose);
-			var ec = parseExpr();
-			mk(ETry(e, vname, t, ec), p1, pmax(ec));
+			var canensure=true;
+			var tk=token();
+			if(tk==TDoubleDot &&allowTypes)
+			{
+				t=parseType();
+			}
+			else{
+				canensure = false;
+			}
+			if(canensure)ensure(TPClose);
+			var ce = parseExpr();
+			mk(ETry(e, cname, t, ce), p1, pmax(ce));
 		case "switch":
 			var e = parseExpr();
 			var def = null, cases = [];
@@ -1306,7 +1311,7 @@ class Parser {
 					ensure(TDoubleDot);
 					fields.push( { name : name, t : parseType(), meta : meta } );
 					meta = null;
-					ensure(TSemicolon);
+					ensure(TStatement);
 				case TId(name):
 					ensure(TDoubleDot);
 					fields.push( { name : name, t : parseType(), meta : meta } );
@@ -1429,7 +1434,7 @@ class Parser {
 		switch( ident ) {
 		case "package":
 			var path = parsePath();
-			ensure(TSemicolon);
+			ensure(TStatement);
 			return null;
 		case "import":
 			var path = [getIdent()];
@@ -1450,7 +1455,7 @@ class Parser {
 					unexpected(t);
 				}
 			}
-			ensure(TSemicolon);
+			ensure(TStatement);
 			return DImport(path, star);
 		case "class":
 			var name = getIdent();
@@ -1550,13 +1555,13 @@ class Parser {
 
 				if( expr != null ) {
 					if( isBlock(expr) )
-						maybe(TSemicolon);
+						maybe(TStatement);
 					else
-						ensure(TSemicolon);
+						ensure(TStatement);
 				} else if( type != null && type.match(CTAnon(_)) ) {
-					maybe(TSemicolon);
+					maybe(TStatement);
 				} else
-					ensure(TSemicolon);
+					ensure(TStatement);
 
 				return {
 					name : name,
@@ -1771,7 +1776,8 @@ class Parser {
 						return TConst( (exp > 0) ? CFloat(n * 10 / exp) : ((i == n) ? CInt(i) : CFloat(n)) );
 					}
 				}
-			case ";".code: return TSemicolon;
+
+			case ";".code: return TStatement;
 			case "(".code: return TPOpen;
 			case ")".code: return TPClose;
 			case ",".code: return TComma;
@@ -2039,14 +2045,14 @@ class Parser {
 		case TBrClose: "}";
 		case TDot: ".";
 		case TComma: ",";
-		case TSemicolon: ";";
+		case TStatement: ";";
 		case TBkOpen: "[";
 		case TBkClose: "]";
 		case TQuestion: "?";
 		case TDoubleDot: ":";
 		case TMeta(id): "@" + id;
 		case TPrepro(id): "#" + id;
+		case TEol: null;
 		}
 	}
-
 }
