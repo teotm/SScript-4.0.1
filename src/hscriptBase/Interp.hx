@@ -19,10 +19,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-package hscript;
+package hscriptBase;
 import haxe.display.JsonModuleTypes.JsonBinop;
 import haxe.PosInfos;
-import hscript.Expr;
+import hscriptBase.Expr;
 import haxe.Constraints.IMap;
 
 private enum Stop {
@@ -35,7 +35,7 @@ class Interp {
 
 	#if haxe3
 	public var variables : Map<String,Dynamic>;
-	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool }>;
+	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool }>;
 	var binops : Map<String, Expr -> Expr -> Dynamic >;
 	#else
 	public var variables : Hash<Dynamic>;
@@ -45,7 +45,7 @@ class Interp {
 
 	var depth : Int;
 	var inTry : Bool;
-	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool } }>;
+	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool } }>;
 	var returnValue : Dynamic;
 
 	var script : SScript;
@@ -121,7 +121,6 @@ class Interp {
 		binops.set(">>>",function(e1,e2) return me.expr(e1) >>> me.expr(e2));
 		binops.set("==",function(e1,e2) return me.expr(e1) == me.expr(e2));
 		binops.set("!=",function(e1,e2) return me.expr(e1) != me.expr(e2));
-		binops.set("===",function(e1,e2) return Std.isOfType(me.expr(e1),me.expr(e2)));
 		binops.set(">=",function(e1,e2) return me.expr(e1) >= me.expr(e2));
 		binops.set("<=",function(e1,e2) return me.expr(e1) <= me.expr(e2));
 		binops.set(">",function(e1,e2) return me.expr(e1) > me.expr(e2));
@@ -350,49 +349,37 @@ class Interp {
 			}
 		case EIdent(id):
 			return resolve(id);
-		case EVar(n,t,e):
-			var cls = [];
-			switch(t)
-			{
-				case CTPath(p,pr):
-					cls = p;
-					if(pr!=null)
-					{
-						for(i in 0...pr.length)
-						{
-							var ct = pr[i];
-							switch(ct)
-							{
-								case CTPath(pn, prn):
-									for(pnn in pn)	
-									cls.push(pnn);
-									for(pnn in prn)
-									{
-										var n:Dynamic = pnn.getParameters()[0];
-										while(true)
-										{
-											if(!(n is Array))
-												break;
-
-											n=n[0];
-										}
-										cls.push(n);
-									}
-									default:
-							}
-						}
-					}
-				default:
+		case EVar(n,t,e,tc):
+			var pf = false;
+			if(tc!=null){
+				pf=(tc.f=="publicField"||tc.f=="inlineVar");
+				pf=pf&&tc.v;
 			}
-			for(cl in cls)
-				if(Type.resolveClass(cl)==null&&!variables.exists(cl))
-					error(EUnmatcingType(n,cl));
+		
+			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
-			locals.set(n,{ r : (e == null)?null:expr(e) });
+			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
+			else{
+				if(locals.exists(n))error(EDuplicate(n));
+				declared.push({ n : n, old : locals.get(n) });
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+			}
 			return null;
-		case EFinal(n,_,e):
+		case EFinal(n,t,e,tc):
+			var pf = false;
+			if(tc!=null){
+				pf=(tc.f=="publicField"||tc.f=="inlineVar");
+				//pf=pf&&tc.v;
+			}
+
+			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
+			}
+			else{
+				if(locals.exists(n))error(EDuplicate(n));
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
+			}
 			return null;
 		case EParent(e):
 			return expr(e);
@@ -429,6 +416,19 @@ class Interp {
 				error(EInvalidOp(op));
 			}
 		case ECall(e,params):
+			var id = switch(#if hscriptPos e.e #else e #end){
+				case EIdent(v,i):
+					v;
+				default: null;
+			}
+
+			var inl=false;
+			try{
+				inl=locals.get(id).isInline;
+			}
+			catch(e){
+				inl = false;
+			}
 			var args = new Array();
 			for( p in params )
 				args.push(expr(p));
@@ -437,9 +437,9 @@ class Interp {
 			case EField(e,f):
 				var obj = expr(e);
 				if( obj == null ) error(EInvalidAccess(f));
-				return fcall(obj,f,args);
+				return fcall(obj,f,args,inl);
 			default:
-				return call(null,expr(e),args);
+				return call(null,expr(e),args,inl);
 			}
 		case EIf(econd,e1,e2):
 			return if( expr(econd) == true ) expr(e1) else if( e2 == null ) null else expr(e2);
@@ -464,9 +464,17 @@ class Interp {
 				variables.set( c , e );
 
 			return null;
-		case EPackage:
+		case EPackage(p):
+			@:privateAccess if(p!=null)script.setPackagePath(p);
 			return null;
-		case EFunction(params,fexpr,name,_):
+		case EFunction(params,fexpr,name,_,t):
+			var inl=false;
+			if(t!=null){
+				inl=(t.f=="inlineFunc"||t.f=="publicField")&&t.v;
+			}
+			if(inl){
+				if(locals.exists(name)||variables.exists(name))error(EDuplicate(name));
+			}
 			var capturedLocals = duplicate(locals);
 			var me = this;
 			var hasOpt = false, minParams = 0;
@@ -531,7 +539,7 @@ class Interp {
 				} else {
 					// function-in-function is a local function
 					declared.push( { n : name, old : locals.get(name) } );
-					var ref = { r : f };
+					var ref = { r : f , isInline : inl};
 					locals.set(name, ref);
 					capturedLocals.set(name, ref); // allow self-recursion
 				}
@@ -740,7 +748,7 @@ class Interp {
 				if(script.privateAccess)
 				{	
 					@:privateAccess
-					prop = Reflect.getProperty(o, f);
+					prop = Reflect.getProperty(o,f);
 				}
 				else
 				{
@@ -770,12 +778,12 @@ class Interp {
 		return v;
 	}
 
-	function fcall( o : Dynamic, f : String, args : Array<Dynamic> ) : Dynamic {
-		return call(o, get(o, f), args);
+	function fcall( o : Dynamic, f : String, args : Array<Dynamic> , ?i) : Dynamic {
+		return call(o, get(o, f), args,i);
 	}
 
-	function call( o : Dynamic, f : Dynamic, args : Array<Dynamic> ) : Dynamic {
-		return Reflect.callMethod(o,f,args);
+	function call( o : Dynamic, f : Dynamic, args : Array<Dynamic> , ?i ) : Dynamic {
+		return if (i) inline Reflect.callMethod(o,f,args) else Reflect.callMethod(o,f,args);
 	}
 
 	function cnew( cl : String, args : Array<Dynamic> ) : Dynamic {
@@ -783,5 +791,4 @@ class Interp {
 		if( c == null ) c = resolve(cl);
 		return Type.createInstance(c,args);
 	}
-
 }

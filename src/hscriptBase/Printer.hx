@@ -19,8 +19,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-package hscript;
-import hscript.Expr;
+package hscriptBase;
+import hscriptBase.Expr;
 
 class Printer {
 
@@ -345,6 +345,8 @@ class Printer {
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
 			case EUnmatcingType(v,t): "Type declaration (" + "\"" + t + "\"" + ") for " + "\"" + v + "\"" + " is invalid or unmatched.";
 			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
+			case EUpperCase: "Package name cannot have capital letters.";
+			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
 		};
 		#if hscriptPos
 		return e.origin + ":" + e.line + ": " + message;

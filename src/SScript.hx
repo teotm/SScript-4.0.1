@@ -1,8 +1,8 @@
 package;
 
 import haxe.Constraints;
-import hscript.*;
-import hscript.Expr;
+import hscriptBase.*;
+import hscriptBase.Expr;
 
 import sys.FileSystem;
 import sys.io.File;
@@ -29,7 +29,7 @@ class SScript
     /**
         Map of the all created scripts.
 
-        When you create a new script; it will be set in this map, `global`.
+        When you create a new script, it will be set in this map, `global`.
     **/
     public static var global(default, null):Map<String, SScript> = new Map();
 
@@ -54,7 +54,7 @@ class SScript
     public var script(default, null):String = "";
 
     /**
-        This variable tells if `this` script is active or not.
+        This variable tells if this script is active or not.
 
         Set this to false if you do not want your script to get executed!
     **/
@@ -75,6 +75,11 @@ class SScript
         If true, enables private access to everything in this script. 
     **/
     public var privateAccess:Bool = true;
+
+    /**
+        Gets set automatically if you use `package` in this script.
+    **/
+    public var packagePath(default, null):String = "";
 
     /**
         Creates a new haxe script that will be ready to use after executing.
@@ -116,9 +121,9 @@ class SScript
     }
 
     /**
-        Executes `this` script once.
+        Executes this script once.
 
-        If `this` script does not have any variables set, executing won't do anything.
+        If this script does not have any variables set, executing won't do anything.
     **/
     public function execute():Void
     {
@@ -130,7 +135,7 @@ class SScript
     }
     
     /**
-        Sets a variable to `this` script. 
+        Sets a variable to this script. 
         
         If `key` already exists it will be replaced.
         
@@ -159,7 +164,7 @@ class SScript
     }
 
     /**
-        Unsets a variable from `this` script. 
+        Unsets a variable from this script. 
         
         If a variable named `key` doesn't exist, unsetting won't do anything.
         @param key Variable name to unset.
@@ -244,7 +249,7 @@ class SScript
     }
 
     /**
-        Clears all of the keys assigned to `this` script.
+        Clears all of the keys assigned to this script.
 
         @return Returns this instance for chaining.
     **/
@@ -263,7 +268,7 @@ class SScript
     }
 
     /**
-        Tells if the `key` exists in `this` script's interpreter.
+        Tells if the `key` exists in this script's interpreter.
         @param key The string to look for.
         @return Return is true if `key` is found in interpreter.
     **/
@@ -391,6 +396,11 @@ class SScript
     {
         return for (script in scriptArray)
             script.set(key, obj);
+    }
+
+    function setPackagePath(path:String):String
+    {
+        return packagePath = path;
     }
 
 	function get_variables():Map<String, Dynamic> 

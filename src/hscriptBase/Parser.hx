@@ -19,9 +19,9 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-package hscript;
+package hscriptBase;
 import haxe.Exception;
-import hscript.Expr;
+import hscriptBase.Expr;
 using StringTools;
 
 enum Token {
@@ -115,7 +115,6 @@ class Parser {
 
 	#end
 
-
 	public function new() {
 		line = 1;
 		opChars = "+*/-=!><&|^%~";
@@ -126,7 +125,7 @@ class Parser {
 			["+", "-"],
 			["<<", ">>", ">>>"],
 			["|", "&", "^"],
-			["==", "!=", ">", "<", ">=", "<=", "==="],
+			["==", "!=", ">", "<", ">=", "<="],
 			["..."],
 			["&&"],
 			["||"],
@@ -149,7 +148,7 @@ class Parser {
 			opPriority.set(x, x == "++" || x == "--" ? -1 : -2);
 	}
 
-	public inline function error( err, pmin, pmax ) {
+	public inline function error( err, ?pmin, ?pmax ) {
 		var e=#if hscriptPos new Error(err, pmin, pmax, origin, line) #else err #end;
 		if( script!=null&&script.active )
 			script.error(e);
@@ -429,6 +428,7 @@ class Parser {
 			var e = parseStructure(id);
 			if( e == null )
 				e = mk(EIdent(id, id=="final"));
+			
 			return parseExprNext(e);
 		case TConst(c):
 			switch (c) {
@@ -626,7 +626,7 @@ class Parser {
 		case EParent(e2):
 			EParent(mapCompr(tmp, e2));
 		default:
-			ECall( mk(EField(mk(EIdent(tmp), pmin(e), pmax(e)), "push"), pmin(e), pmax(e)), [e]);
+			ECall(mk(EField(mk(EIdent(tmp), pmin(e), pmax(e)), "push"), pmin(e), pmax(e)), [e]);
 		}
 		return mk(edef, pmin(e), pmax(e));
 	}
@@ -660,7 +660,7 @@ class Parser {
 		}
 	}
 
-	function parseStructure(id, ?c) {
+	function parseStructure(id, ?t : TrickyToken) {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
@@ -687,9 +687,9 @@ class Parser {
 		case "var":
 			var ident = getIdent();
 			var tk = token();
-			var t = null;
+			var tp = null;
 			if( tk == TDoubleDot && allowTypes ) {
-				t = parseType();
+				tp = parseType();
 				tk = token();
 			}
 			var e = null;
@@ -699,13 +699,13 @@ class Parser {
 				case TComma | TSemicolon: push(tk);
 				default: unexpected(tk);
 			}
-			mk(EVar(ident,t,e),p1,(e == null) ? tokenMax : pmax(e));
+			mk(EVar(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
 		case "final":
 			var ident = getIdent();
 			var tk = token();
-			var t = null;
+			var tp = null;
 			if( tk == TDoubleDot && allowTypes ) {
-				t = parseType();
+				tp = parseType();
 				tk = token();
 			}
 			var e = null;
@@ -715,7 +715,7 @@ class Parser {
 				case TComma | TSemicolon: push(tk);
 				default: unexpected(tk);
 			}
-			mk(EFinal(ident,t,e),p1,(e == null) ? tokenMax : pmax(e));
+			mk(EFinal(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
 		case "while":
 			var econd = parseExpr();
 			var e = parseExpr();
@@ -741,9 +741,53 @@ class Parser {
 		case "break": mk(EBreak);
 		case "continue": mk(EContinue);
 		case "else": unexpected(TId(id));
+		case "public":
+			var maybeID="inline";
+			var maybe=maybe(TId(maybeID));
+			
+			var maybes=["var","final","function"];
+			if(!maybe)
+			{
+				for(int in 0...3){
+					maybeID=maybes[int];
+					maybe=this.maybe(TId(maybeID));
+					if(maybe)
+						break;
+				}
+				if(!maybe)
+					unexpected(TId("public"));
+			}
+
+			switch(maybeID){
+				case "inline":
+					var tk = token();
+					var t = null;
+					switch(tk){
+						case TId(s): t = s;
+						default: t = null;
+					};
+					switch(t){
+						case "function":
+							parseStructure(t,{f:"inlineFunc",v:true});
+						case "var" | "final":
+							parseStructure(t,{f:t=="final"?"inlineFinal":"inlineVar",v:true});
+						default:
+							unexpected(TId("public"));
+					}
+				default: 
+					if(!maybes.contains(maybeID))
+						unexpected(TId(maybeID));
+					else{
+						var e=parseStructure(maybeID,{f:"publicField",v:true});
+						return e;
+					}
+			}
 		case "inline":
+			if (maybe(TId("public")))
+				parseStructure("public");
+			else{ 
 			if( !maybe(TId("function")) ) unexpected(TId("inline"));
-			return parseStructure("function");
+			return parseStructure("function");}
 		case "function":
 			var tk = token();
 			var name = null;
@@ -752,7 +796,7 @@ class Parser {
 			default: push(tk);
 			}
 			var inf = parseFunctionDecl();
-			mk(EFunction(inf.args, inf.body, name, inf.ret),p1,pmax(inf.body));
+			mk(EFunction(inf.args, inf.body, name, inf.ret, t),p1,pmax(inf.body));
 		case "return":
 			var tk = token();
 			push(tk);
@@ -1002,8 +1046,46 @@ class Parser {
 			if(packaged)
 				throw new Exception('Cannot use "package" twice!');
 
+			var path = [getIdent()];
+			trace(path);
+			if(path!=[null]){
+				while( true ) {
+					var t = token();
+					if( t != TDot ) {
+						push(t);
+						break;
+					}
+					t = token();
+					switch( t ) {
+					case TId(id):
+						path.push(id);
+					default:
+						unexpected(t);
+					}
+				}
+
+				for(i in path)
+					if(i!=null)
+						if(i!=i.toLowerCase())
+						error(EUpperCase);
+
+				var p=null;
+				for(i in path.copy().copy()){
+					var index : Int = path.copy().copy().indexOf(i);
+					trace(i,index);
+					if(index==0)
+						p=i;
+					else if(index==path.copy().copy().length-1&&index>1)
+						p+=i;
+					else 
+						p+="."+i;
+				}
+				mk(EPackage(p));
+			}
+
+			else
 			//packaged = true;
-			mk(EPackage);
+			mk(EPackage());
 		default:
 			null;
 		}

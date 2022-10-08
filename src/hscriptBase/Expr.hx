@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-package hscript;
+package hscriptBase;
 
 enum Const {
 	CInt( v : Int );
@@ -45,8 +45,8 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
-	EVar( n : String, ?t : CType, ?e : Expr );
-	EFinal( f : String , ?t : CType , ?e : Expr );
+	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken );
+	EFinal( f : String , ?t : CType , ?e : Expr , ?p : TrickyToken );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String );
@@ -58,7 +58,7 @@ enum Expr {
 	EFor( v : String, it : Expr, e : Expr );
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType );
+	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?p : TrickyToken );
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EArrayDecl( e : Array<Expr> );
@@ -71,10 +71,12 @@ enum Expr {
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
 	EImport( i : Dynamic, c : String );
-	EPackage();
+	EPackage( ?p : String );
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 }
+
+typedef TrickyToken = { f : String , v : Dynamic };
 
 typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };
 
@@ -111,6 +113,7 @@ enum ErrorDef {
 #else
 enum Error {
 #end
+	EDuplicate( v : String );
 	EInvalidChar( c : Int );
 	EUnexpected( s : String );
 	EUnterminatedString;
@@ -124,6 +127,7 @@ enum Error {
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
 	EUnexistingField( f : Dynamic , f2 : Dynamic );
+	EUpperCase( );
 }
 
 
