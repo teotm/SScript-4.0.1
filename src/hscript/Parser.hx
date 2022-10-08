@@ -126,7 +126,7 @@ class Parser {
 			["+", "-"],
 			["<<", ">>", ">>>"],
 			["|", "&", "^"],
-			["==", "!=", ">", "<", ">=", "<="],
+			["==", "!=", ">", "<", ">=", "<=", "==="],
 			["..."],
 			["&&"],
 			["||"],
@@ -1732,6 +1732,10 @@ class Parser {
 					return TOp("==");
 				else if ( char == '>'.code )
 					return TOp("=>");
+				char=readChar();
+				if ( char == '='.code )
+						return TOp("===");
+				
 				this.char = char;
 				return TOp("=");
 			case '@'.code:

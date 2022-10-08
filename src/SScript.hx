@@ -72,6 +72,11 @@ class SScript
     public var traces:Bool = true;
 
     /**
+        If true, enables private access to everything in this script. 
+    **/
+    public var privateAccess:Bool = true;
+
+    /**
         Creates a new haxe script that will be ready to use after executing.
 
         @param scriptPath The script path or the script itself.

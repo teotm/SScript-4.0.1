@@ -123,6 +123,7 @@ enum Error {
 	EUnmatcingType( v : String , t : String );
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
+	EUnexistingField( f : Dynamic , f2 : Dynamic );
 }
 
 

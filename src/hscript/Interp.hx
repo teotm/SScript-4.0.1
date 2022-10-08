@@ -86,6 +86,11 @@ class Interp {
 			if( el.length > 0 ) inf.customParams = el;
 			haxe.Log.trace(Std.string(v), inf);
 		}));
+		variables.set("Bool", Bool);
+		variables.set("Int", Int);
+		variables.set("Float", Float);
+		variables.set("String", String);
+		variables.set("Dynamic", Dynamic);
 	}
 
 	public function posInfos(): PosInfos {
@@ -116,6 +121,7 @@ class Interp {
 		binops.set(">>>",function(e1,e2) return me.expr(e1) >>> me.expr(e2));
 		binops.set("==",function(e1,e2) return me.expr(e1) == me.expr(e2));
 		binops.set("!=",function(e1,e2) return me.expr(e1) != me.expr(e2));
+		binops.set("===",function(e1,e2) return Std.isOfType(me.expr(e1),me.expr(e2)));
 		binops.set(">=",function(e1,e2) return me.expr(e1) >= me.expr(e2));
 		binops.set("<=",function(e1,e2) return me.expr(e1) <= me.expr(e2));
 		binops.set(">",function(e1,e2) return me.expr(e1) > me.expr(e2));
@@ -398,7 +404,7 @@ class Interp {
 			restore(old);
 			return v;
 		case EField(e,f):
-			return get(expr(e),f);
+			return get(expr(e),f,#if hscriptPos e.e #else e #end);
 		case EBinop(op,e1,e2):
 			var fop = binops.get(op);
 			if( fop == null ) error(EInvalidOp(op));
@@ -718,7 +724,7 @@ class Interp {
 		cast(map, haxe.Constraints.IMap<Dynamic, Dynamic>).set(key, value);
 	}
 
-	function get( o : Dynamic, f : String ) : Dynamic {
+	function get( o : Dynamic, f : String , ?e) : Dynamic {
 		if ( o == null ) error(EInvalidAccess(f));
 		return {
 			#if php
@@ -729,7 +735,31 @@ class Interp {
 					Reflect.field(o, f);
 				}
 			#else
-				Reflect.getProperty(o, f);
+			try{
+				var prop=null;
+				if(script.privateAccess)
+				{	
+					@:privateAccess
+					prop = Reflect.getProperty(o, f);
+				}
+				else
+				{
+					prop = Reflect.getProperty(o,f);
+				}
+
+				if(prop==null)
+				{
+					var field=switch(e){
+						case EIdent(v,f):v;
+						default:null;
+					}
+					error(EUnexistingField( field ,f ));
+				}
+				else prop;
+			}
+			catch(e){
+				throw e;
+			}
 			#end
 		}
 	}
