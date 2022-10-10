@@ -48,6 +48,7 @@ class Interp {
 	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool } }>;
 	var returnValue : Dynamic;
 
+	var parser : Parser;
 	var script : SScript;
 
 	#if hscriptPos
@@ -57,6 +58,11 @@ class Interp {
 	public inline function setScr(s)
 	{
 		return script = s;
+	}
+
+	public inline function setPsr(p)
+	{
+		return parser = p;
 	}
 
 	public function new() {
@@ -273,9 +279,9 @@ class Interp {
 		return exprReturn(expr);
 	}
 
-	function exprReturn(e) : Dynamic {
+	function exprReturn(e,?p) : Dynamic {
 		try {
-			return expr(e);
+			return expr(e,p);
 		} catch( e : Stop ) {
 			switch( e ) {
 			case SBreak: throw "Invalid break";
@@ -332,7 +338,7 @@ class Interp {
 		return v;
 	}
 
-	public function expr( e : Expr ) : Dynamic {
+	public function expr( e : Expr , ?trk : TrickyToken ) : Dynamic {
 		#if hscriptPos
 		curExpr = e;
 		var e = e.e;
@@ -350,9 +356,11 @@ class Interp {
 		case EIdent(id):
 			return resolve(id);
 		case EVar(n,t,e,tc):
+			if(trk!=null&&trk.v&&["privateField","inlineVar","publicField"].contains(trk.f))
+				error(EUnexpected(trk.n));
 			var pf = false;
 			if(tc!=null){
-				pf=(tc.f=="publicField"||tc.f=="inlineVar");
+				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
 		
@@ -360,16 +368,17 @@ class Interp {
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
 			else{
-				if(locals.exists(n))error(EDuplicate(n));
-				declared.push({ n : n, old : locals.get(n) });
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+				if(variables.exists(n))error(EDuplicate(n));
+				variables.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
 			}
 			return null;
 		case EFinal(n,t,e,tc):
+			if(trk!=null&&trk.v&&["privateField","inlineFinal","publicField"].contains(trk.f))
+				error(EUnexpected(trk.n));
 			var pf = false;
 			if(tc!=null){
-				pf=(tc.f=="publicField"||tc.f=="inlineVar");
-				//pf=pf&&tc.v;
+				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
+				pf=pf&&tc.v;
 			}
 
 			if(!pf){
@@ -377,17 +386,36 @@ class Interp {
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
 			}
 			else{
-				if(locals.exists(n))error(EDuplicate(n));
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
+				if(variables.exists(n))error(EDuplicate(n));
+				variables.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
 			}
 			return null;
 		case EParent(e):
-			return expr(e);
+			var trk1 = switch(#if hscriptPos e.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e)
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							default: tr=null;
+						}
+					tr;
+				default:null;
+			}
+			return expr(e,trk1);
 		case EBlock(exprs):
 			var old = declared.length;
 			var v = null;
-			for( e in exprs )
+			for( e in exprs ) {
+				var trk1 = switch(#if hscriptPos e.e #else e #end){
+					case EVar(n,t,e,p):p;
+					case EFinal(n,t,e,p):p;
+					default:null;
+				}
 				v = expr(e);
+			}
 			restore(old);
 			return v;
 		case EField(e,f):
@@ -442,15 +470,89 @@ class Interp {
 				return call(null,expr(e),args,inl);
 			}
 		case EIf(econd,e1,e2):
-			return if( expr(econd) == true ) expr(e1) else if( e2 == null ) null else expr(e2);
+			var trk1 = switch(#if hscriptPos e1.e #else e1 #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e)
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p;
+							default: tr=null;
+						}
+					tr;
+				default:null;
+			}
+			var trk2 = switch(#if hscriptPos e2.e #else e2 #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			return if( expr(econd) == true ) expr(e1,trk1) else if( e2 == null ) null else expr(e2,trk2);
 		case EWhile(econd,e):
-			whileLoop(econd,e);
+			var trk1 = switch(#if hscriptPos e.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p; break;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			whileLoop(econd,e,trk1);
 			return null;
 		case EDoWhile(econd,e):
-			doWhileLoop(econd,e);
+			var trk1 = switch(#if hscriptPos e.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p; break;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			doWhileLoop(econd,e,trk1);
 			return null;
 		case EFor(v,it,e):
-			forLoop(v,it,e);
+			var trk1 = switch(#if hscriptPos e.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p; break;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			forLoop(v,it,e,trk1);
 			return null;
 		case EBreak:
 			throw SBreak;
@@ -468,9 +570,31 @@ class Interp {
 			@:privateAccess if(p!=null)script.setPackagePath(p);
 			return null;
 		case EFunction(params,fexpr,name,_,t):
+			var trk1 = switch(#if hscriptPos fexpr.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p; break;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			var all=trk1!=null;
+			var unall=["privateField","inlineVar","inlineFinal","publicField"];
+			unall=unall.copy().copy();
+			all=all&&all?trk1.v:false;
+			all=all&&all?unall.contains(trk1.f):false;
+			if(all)
+				@:privateAccess parser.unexpected(TId(trk1.n));
 			var inl=false;
 			if(t!=null){
-				inl=(t.f=="inlineFunc"||t.f=="publicField")&&t.v;
+				inl=t.f=="inlineFunc"||t.f=="publicField"||t.f=="privateField"&&t.v;
 			}
 			if(inl){
 				if(locals.exists(name)||variables.exists(name))error(EDuplicate(name));
@@ -514,7 +638,7 @@ class Interp {
 				var oldDecl = declared.length;
 				if( inTry )
 					try {
-						r = me.exprReturn(fexpr);
+						r = me.exprReturn(fexpr,trk1);
 					} catch( e : Dynamic ) {
 						me.locals = old;
 						me.depth = depth;
@@ -524,8 +648,9 @@ class Interp {
 						throw e;
 						#end
 					}
-				else
-					r = me.exprReturn(fexpr);
+				else{
+					r = me.exprReturn(fexpr,trk1);
+				}
 				restore(oldDecl);
 				me.locals = old;
 				me.depth = depth;
@@ -537,6 +662,8 @@ class Interp {
 					// global function
 					variables.set(name, f);
 				} else {
+					if(inl)
+						error(EUnexpected(t.n));
 					// function-in-function is a local function
 					declared.push( { n : name, old : locals.get(name) } );
 					var ref = { r : f , isInline : inl};
@@ -604,11 +731,41 @@ class Interp {
 		case EThrow(e):
 			throw expr(e);
 		case ETry(e,n,_,ecatch):
+			var trk1 = switch(#if hscriptPos e.e #else e #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
+			var trk2 = switch(#if hscriptPos ecatch.e #else ecatch #end){
+				case EVar(n,t,e,p):p;
+				case EFinal(n,t,e,p):p;
+				case EBlock(e):
+					var tr=null;
+					if(e!=null)for(e in e){
+						switch(#if hscriptPos e.e #else e #end){
+							case EVar(n,t,e,p):tr=p; break;
+							case EFinal(n,t,e,p):p;
+							default: tr=null;
+						}
+					}
+					tr;
+				default:null;
+			}
 			var old = declared.length;
 			var oldTry = inTry;
 			try {
 				inTry = true;
-				var v : Dynamic = expr(e);
+				var v : Dynamic = expr(e,trk1);
 				restore(old);
 				inTry = oldTry;
 				return v;
@@ -622,7 +779,7 @@ class Interp {
 				// declare 'v'
 				declared.push({ n : n, old : locals.get(n) });
 				locals.set(n,{ r : err });
-				var v : Dynamic = expr(ecatch);
+				var v : Dynamic = expr(ecatch,trk1);
 				restore(old);
 				return v;
 			}
@@ -658,11 +815,11 @@ class Interp {
 		return null;
 	}
 
-	function doWhileLoop(econd,e) {
+	function doWhileLoop(econd,e,p) {
 		var old = declared.length;
 		do {
 			try {
-				expr(e);
+				expr(e,p);
 			} catch( err : Stop ) {
 				switch(err) {
 				case SContinue:
@@ -671,15 +828,15 @@ class Interp {
 				}
 			}
 		}
-		while( expr(econd) == true );
+		while( expr(econd,p) == true );
 		restore(old);
 	}
 
-	function whileLoop(econd,e) {
+	function whileLoop(econd,e,p) {
 		var old = declared.length;
 		while( expr(econd) == true ) {
 			try {
-				expr(e);
+				expr(e,p);
 			} catch( err : Stop ) {
 				switch(err) {
 				case SContinue:
@@ -701,14 +858,14 @@ class Interp {
 		return v;
 	}
 
-	function forLoop(n,it,e) {
+	function forLoop(n,it,e,?p) {
 		var old = declared.length;
 		declared.push({ n : n, old : locals.get(n) });
 		var it = makeIterator(expr(it));
 		while( it.hasNext() ) {
 			locals.set(n,{ r : it.next() });
 			try {
-				expr(e);
+				expr(e,p);
 			} catch( err : Stop ) {
 				switch( err ) {
 				case SContinue:
@@ -732,7 +889,7 @@ class Interp {
 		cast(map, haxe.Constraints.IMap<Dynamic, Dynamic>).set(key, value);
 	}
 
-	function get( o : Dynamic, f : String , ?e) : Dynamic {
+	function get( o : Dynamic, f : String , ?en) : Dynamic {
 		if ( o == null ) error(EInvalidAccess(f));
 		return {
 			#if php
@@ -757,7 +914,7 @@ class Interp {
 
 				if(prop==null)
 				{
-					var field=switch(e){
+					var field=switch(en){
 						case EIdent(v,f):v;
 						default:null;
 					}

@@ -76,7 +76,7 @@ enum Expr {
 	ECheckType( e : Expr, t : CType );
 }
 
-typedef TrickyToken = { f : String , v : Dynamic };
+typedef TrickyToken = { f : String , v : Bool , n : String };
 
 typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };
 

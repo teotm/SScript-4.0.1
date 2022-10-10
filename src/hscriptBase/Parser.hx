@@ -742,6 +742,43 @@ class Parser {
 		case "break": mk(EBreak);
 		case "continue": mk(EContinue);
 		case "else": unexpected(TId(id));
+		case "private":
+			var maybeIdent="inline";
+			var maybe=maybe(TId(maybeIdent));
+			var maybes=["function","var","final"];
+			if(!maybe){
+				for(int in 0...maybes.length){
+					maybeIdent=maybes[int];
+					maybe=this.maybe(TId(maybeIdent));
+					if(maybe)break;
+				}
+				if(!maybe)unexpected(TId("private"));
+			}
+
+			switch(maybeIdent){
+				case "inline":
+					var tk = token();
+					var t=switch(tk){
+						case TId(s): s;
+						default: null;
+					};
+					var trk = {f:"inlineFunc",v:true,n:id};
+					switch(t){
+						case "function":
+							parseStructure("function",trk);
+						case "var" | "final":
+							trk.f=t=="final"?"inlineFinal":"inlineVar";
+							parseStructure(t,trk);
+						default:
+							unexpected(TId("public"));
+					}
+				default:
+					if(!maybes.contains(maybeIdent))
+						unexpected(TId(maybeIdent));
+					else {
+						parseStructure(maybeIdent,{f:"privateField",v:true,n:id});
+					}
+			}
 		case "public":
 			var maybeID="inline";
 			var maybe=maybe(TId(maybeID));
@@ -749,7 +786,7 @@ class Parser {
 			var maybes=["var","final","function"];
 			if(!maybe)
 			{
-				for(int in 0...3){
+				for(int in 0...maybes.length){
 					maybeID=maybes[int];
 					maybe=this.maybe(TId(maybeID));
 					if(maybe)
@@ -758,7 +795,6 @@ class Parser {
 				if(!maybe)
 					unexpected(TId("public"));
 			}
-
 			switch(maybeID){
 				case "inline":
 					var tk = token();
@@ -769,9 +805,9 @@ class Parser {
 					};
 					switch(t){
 						case "function":
-							parseStructure(t,{f:"inlineFunc",v:true});
+							parseStructure(t,{f:"inlineFunc",v:true,n:id});
 						case "var" | "final":
-							parseStructure(t,{f:t=="final"?"inlineFinal":"inlineVar",v:true});
+							parseStructure(t,{f:t=="final"?"inlineFinal":"inlineVar",v:true,n:id});
 						default:
 							unexpected(TId("public"));
 					}
@@ -779,8 +815,8 @@ class Parser {
 					if(!maybes.contains(maybeID))
 						unexpected(TId(maybeID));
 					else{
-						var e=parseStructure(maybeID,{f:"publicField",v:true});
-						return e;
+						var e=parseStructure(maybeID,{f:"publicField",v:true,n:id});
+						e;
 					}
 			}
 		case "inline":

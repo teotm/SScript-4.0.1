@@ -112,6 +112,7 @@ class SScript
 
         parser = new Parser();
         parser.script = this;
+        interp.setPsr(parser);
 
         if (preset)
             this.preset();
@@ -295,8 +296,7 @@ class SScript
         var call:Dynamic = call('errorThrow', [err]);
         if (call != null)
             throw '"errorThrow" must return null or nothing.';
-        call = null;
-        return call;
+        return call = null;
     }
 
     /**
