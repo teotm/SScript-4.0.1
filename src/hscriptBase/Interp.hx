@@ -125,6 +125,7 @@ class Interp {
 		binops.set("<<",function(e1,e2) return me.expr(e1) << me.expr(e2));
 		binops.set(">>",function(e1,e2) return me.expr(e1) >> me.expr(e2));
 		binops.set(">>>",function(e1,e2) return me.expr(e1) >>> me.expr(e2));
+		binops.set("===",function(e1,e2) return true);
 		binops.set("==",function(e1,e2) return me.expr(e1) == me.expr(e2));
 		binops.set("!=",function(e1,e2) return me.expr(e1) != me.expr(e2));
 		binops.set(">=",function(e1,e2) return me.expr(e1) >= me.expr(e2));
@@ -155,7 +156,7 @@ class Interp {
 		var v = expr(e2);
 		switch( Tools.expr(e1) ) {
 		case EIdent(id,f):
-			if(locals.get(id).isFinal)
+			if(locals.get(id)!=null&&locals.get(id).isFinal)
 				return error(EInvalidFinal(id));
 			var l = locals.get(id);
 			if( l == null )
@@ -363,13 +364,16 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-		
+			if(pf)
+			parser.checkType(variables,t);
+			else parser.checkType(locals,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
 			else{
-				if(variables.exists(n))error(EDuplicate(n));
-				variables.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+				if(variables.exists(n)||locals.exists(n))error(EDuplicate(n));
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+				variables.set(n,e==null?null:expr(e));
 			}
 			return null;
 		case EFinal(n,t,e,tc):
@@ -380,14 +384,17 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-
+			if(pf)
+			parser.checkType(variables,t);
+			else parser.checkType(locals,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
 			}
 			else{
-				if(variables.exists(n))error(EDuplicate(n));
-				variables.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
+				if(variables.exists(n)||locals.exists(n))error(EDuplicate(n));
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
+				variables.set(n,e == null?null:expr(e));
 			}
 			return null;
 		case EParent(e):
@@ -599,7 +606,7 @@ class Interp {
 			if(inl){
 				if(locals.exists(name)||variables.exists(name))error(EDuplicate(name));
 			}
-			var capturedLocals = duplicate(locals);
+			var capturedLocals = duplicate(locals).copy();
 			var me = this;
 			var hasOpt = false, minParams = 0;
 			for( p in params )

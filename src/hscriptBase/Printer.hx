@@ -347,6 +347,8 @@ class Printer {
 			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
+			case ELowerCaseType(t): "Type " + t + " cannot start with a lowercase letter.";
+			case EExpectedField(v): "Expected \"public\" or \"private\" for " + v + ", couldn't get any.";
 		};
 		#if hscriptPos
 		return e.origin + ":" + e.line + ": " + message;

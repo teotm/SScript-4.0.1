@@ -12,7 +12,7 @@ import sys.io.File;
 
     For creating a new script without a file, look at this example.
     ```haxe
-    var script:String = "package; final num:Int = 1; function traceNum() { trace(num); }";
+    var script:String = "package; private final num:Int = 1; function traceNum() { trace(num); }";
     var sscript:SScript = new SScript().doString(script);
     sscript.call('traceNum', []); // 1
     ```

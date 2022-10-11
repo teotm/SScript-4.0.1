@@ -126,7 +126,7 @@ class Parser {
 			["+", "-"],
 			["<<", ">>", ">>>"],
 			["|", "&", "^"],
-			["==", "!=", ">", "<", ">=", "<="],
+			["==", "!=", ">", "<", ">=", "<=", "==="],
 			["..."],
 			["&&"],
 			["||"],
@@ -688,6 +688,34 @@ class Parser {
 		case "var":
 			var ident = getIdent();
 			var tk = token();
+			if(tk==TPOpen)
+			{
+				if(t==null) {
+					error(EExpectedField(ident));
+				}
+				var tk2 = token();
+				var nulls=["default","null","get","set"];
+				switch(tk2){
+					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
+					default: unexpected(tk2);
+				}
+				var tk2 = token();
+				switch(tk2){
+					case TComma://allowed
+					default: unexpected(tk2);
+				}
+				var tk2 = token();
+				switch(tk2){
+					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
+					default: unexpected(tk2);
+				}
+				var tk2 = token();
+				switch(tk2){
+					case TPClose://allowed
+					default: unexpected(tk2);
+				}
+				tk = token();
+			}
 			var tp = null;
 			if( tk == TDoubleDot && allowTypes ) {
 				tp = parseType();
@@ -698,6 +726,18 @@ class Parser {
 			{
 				case TOp("="): e = parseExpr();
 				case TComma | TStatement: push(tk);
+				switch(tp){
+					case CTPath(p,pr):trace(p,pr);
+					switch(p[0]){
+						case "Int":
+							e = mk(EConst(CInt(0)));
+						case "Bool":
+							e = mk(EIdent("false",false));
+						case "Float":
+							e = mk(EConst(CFloat(0.0)));
+					}
+					default:
+				}
 				default: unexpected(tk);
 			}
 			mk(EVar(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
@@ -714,6 +754,18 @@ class Parser {
 			{
 				case TOp("="): e = parseExpr();
 				case TComma | TStatement: push(tk);
+				switch(tp){
+					case CTPath(p,pr):trace(p,pr);
+					switch(p[0]){
+						case "Int":
+							e = mk(EConst(CInt(0)));
+						case "Bool":
+							e = mk(EIdent("false",false));
+						case "Float":
+							e = mk(EConst(CFloat(0.0)));
+					}
+					default:
+				}
 				default: unexpected(tk);
 			}
 			mk(EFinal(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
@@ -1248,6 +1300,15 @@ class Parser {
 		return path;
 	}
 
+	public function checkType(v,c) : Bool {
+		var c=switch(c){
+			case CTPath(p):p[0];
+			default:null;
+		};
+		if(!v.exists(c)){error(ELowerCaseType(c)); return false;}
+		else return true;
+	}
+
 	function parseType() : CType {
 		var t = token();
 		switch( t ) {
@@ -1281,6 +1342,7 @@ class Parser {
 						break;
 					}
 				} else {
+					if(v==v.toLowerCase())throw "Type " + op + " cannot be lowercase.";
 					push(t);
 				}
 			default:
