@@ -371,7 +371,7 @@ class Interp {
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
 			else{
-				if(variables.exists(n)error(EDuplicate(n));
+				if(variables.exists(n))error(EDuplicate(n));
 				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
 				variables.set(n,e==null?null:expr(e));
 			}
