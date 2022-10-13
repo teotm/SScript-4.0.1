@@ -727,7 +727,7 @@ class Parser {
 				case TOp("="): e = parseExpr();
 				case TComma | TStatement: push(tk);
 				switch(tp){
-					case CTPath(p,pr):trace(p,pr);
+					case CTPath(p,pr):
 					switch(p[0]){
 						case "Int":
 							e = mk(EConst(CInt(0)));
@@ -755,7 +755,7 @@ class Parser {
 				case TOp("="): e = parseExpr();
 				case TComma | TStatement: push(tk);
 				switch(tp){
-					case CTPath(p,pr):trace(p,pr);
+					case CTPath(p,pr):
 					switch(p[0]){
 						case "Int":
 							e = mk(EConst(CInt(0)));
@@ -1140,7 +1140,6 @@ class Parser {
 				throw new Exception('Cannot use "package" twice!');
 
 			var path = [getIdent()];
-			trace(path);
 			if(path!=[null]){
 				while( true ) {
 					var t = token();
@@ -1165,7 +1164,6 @@ class Parser {
 				var p=null;
 				for(i in path.copy().copy()){
 					var index : Int = path.copy().copy().indexOf(i);
-					trace(i,index);
 					if(index==0)
 						p=i;
 					else if(index==path.copy().copy().length-1&&index>1)
@@ -1342,7 +1340,7 @@ class Parser {
 						break;
 					}
 				} else {
-					if(v==v.toLowerCase())throw "Type " + op + " cannot be lowercase.";
+					//if(v==v.toLowerCase())throw "Type " + op + " cannot be lowercase.";
 					push(t);
 				}
 			default:

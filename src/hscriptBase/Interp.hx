@@ -364,9 +364,7 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-			if(pf)
 			parser.checkType(variables,t);
-			else parser.checkType(locals,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
@@ -477,7 +475,7 @@ class Interp {
 				return call(null,expr(e),args,inl);
 			}
 		case EIf(econd,e1,e2):
-			var trk1 = switch(#if hscriptPos e1.e #else e1 #end){
+			var trk1 = if(e1!=null) switch(#if hscriptPos e1.e #else e1 #end){
 				case EVar(n,t,e,p):p;
 				case EFinal(n,t,e,p):p;
 				case EBlock(e):
@@ -485,13 +483,14 @@ class Interp {
 					if(e!=null)for(e in e)
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					tr;
 				default:null;
-			}
-			var trk2 = switch(#if hscriptPos e2.e #else e2 #end){
+			} else null;
+
+			var trk2 = if (e2!=null) switch(#if hscriptPos e2.e #else e2 #end){
 				case EVar(n,t,e,p):p;
 				case EFinal(n,t,e,p):p;
 				case EBlock(e):
@@ -499,13 +498,13 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					}
 					tr;
 				default:null;
-			}
+			} else null;
 			return if( expr(econd) == true ) expr(e1,trk1) else if( e2 == null ) null else expr(e2,trk2);
 		case EWhile(econd,e):
 			var trk1 = switch(#if hscriptPos e.e #else e #end){
@@ -516,7 +515,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p; break;
+							case EFinal(n,t,e,p):tr=p; break; break;
 							default: tr=null;
 						}
 					}
@@ -534,7 +533,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p; break;
+							case EFinal(n,t,e,p):tr=p; break; break;
 							default: tr=null;
 						}
 					}
@@ -552,7 +551,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p; break;
+							case EFinal(n,t,e,p):tr=p; break; break;
 							default: tr=null;
 						}
 					}
@@ -585,7 +584,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p; break;
+							case EFinal(n,t,e,p):tr=p; break; break;
 							default: tr=null;
 						}
 					}
@@ -606,7 +605,7 @@ class Interp {
 			if(inl){
 				if(locals.exists(name)||variables.exists(name))error(EDuplicate(name));
 			}
-			var capturedLocals = duplicate(locals).copy();
+			var capturedLocals = duplicate(locals);
 			var me = this;
 			var hasOpt = false, minParams = 0;
 			for( p in params )
@@ -614,7 +613,8 @@ class Interp {
 					hasOpt = true;
 				else
 					minParams++;
-			var f = function(args:Array<Dynamic>) {
+			var f = function(args:Array<Dynamic>) 
+			{			
 				if( ( (args == null) ? 0 : args.length ) != params.length ) {
 					if( args.length < minParams ) {
 						var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
@@ -746,7 +746,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					}
@@ -761,7 +761,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):p;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					}
