@@ -22,6 +22,8 @@
 package hscriptBase;
 import hscriptBase.Expr;
 
+using StringTools;
+
 class Tools {
 
 	public static function iter( e : Expr, f : Expr -> Void ) {
@@ -90,6 +92,27 @@ class Tools {
 		default: #if hscriptPos e.e #else e #end;
 		}
 		return mk(edef, e);
+	}
+
+	public static function getIdent( e : Expr ) : String {
+		return switch (expr(e)) {
+			case EIdent(v): v;
+			case EField(e,f): getIdent(e);
+			case EArray(e,i): getIdent(e);
+			default: null;
+		}
+	}
+
+	public static function getType( v ) {
+		return switch(Type.typeof(v)) {
+			case TNull: "null";
+			case TInt: "Int";
+			case TFloat: "Float";
+			case TBool: "Bool";
+			case TClass(v): Type.getClassName(v);
+			case TFunction: "Void";
+			default: "" + Type.typeof(v) + "".replace("T","");
+		}
 	}
 
 	public static inline function expr( e : Expr ) : ExprDef {

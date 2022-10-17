@@ -71,7 +71,7 @@ enum Expr {
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
 	EImport( i : Dynamic, c : String );
-	EPackage( ?p : String );
+	EPackage;
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 }

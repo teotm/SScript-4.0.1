@@ -88,6 +88,11 @@ class Parser {
 	**/
 	public var resumeErrors : Bool;
 
+	var interp :Interp;
+
+	inline function setIntrp(interp) 
+		return this.interp = interp;
+
 	// implementation
 	var input : String;
 	var readPos : Int;
@@ -145,7 +150,7 @@ class Parser {
 				opPriority.set(x, i);
 				if( i == 9 ) opRightAssoc.set(x, true);
 			}
-		for( x in ["!", "++", "--", "~"] ) // unary "-" handled in parser directly!
+		for( x in ["!", "++", "--", "~", "cast", "untyped"] ) // unary "-" handled in parser directly!
 			opPriority.set(x, x == "++" || x == "--" ? -1 : -2);
 	}
 
@@ -236,11 +241,12 @@ class Parser {
 		return false;
 	}
 
-	function getIdent() {
+	function getIdent(?thr = true) {
 		var tk = token();
 		switch( tk ) {
 		case TId(id): return id;
 		default:
+			if(thr)
 			unexpected(tk);
 			return null;
 		}
@@ -725,8 +731,14 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
+				if(tp!=null) switch (tp) {
+					case CTPath(p,pr):
+						@:privateAccess if(p[0]!=Tools.getType(interp.expr(e)))
+						error(EUnmatcingType(Tools.getType(interp.expr(e)),p[0]));
+					default:
+				}
 				case TComma | TStatement: push(tk);
-				switch(tp){
+				if (tp != null) switch(tp){
 					case CTPath(p,pr):
 					switch(p[0]){
 						case "Int":
@@ -1139,44 +1151,7 @@ class Parser {
 			if(packaged)
 				throw new Exception('Cannot use "package" twice!');
 
-			var path = [getIdent()];
-			if(path!=[null]){
-				while( true ) {
-					var t = token();
-					if( t != TDot ) {
-						push(t);
-						break;
-					}
-					t = token();
-					switch( t ) {
-					case TId(id):
-						path.push(id);
-					default:
-						unexpected(t);
-					}
-				}
-
-				for(i in path)
-					if(i!=null)
-						if(i!=i.toLowerCase())
-						error(EUpperCase);
-
-				var p=null;
-				for(i in path.copy().copy()){
-					var index : Int = path.copy().copy().indexOf(i);
-					if(index==0)
-						p=i;
-					else if(index==path.copy().copy().length-1&&index>1)
-						p+=i;
-					else 
-						p+="."+i;
-				}
-				mk(EPackage(p));
-			}
-
-			else
-			//packaged = true;
-			mk(EPackage());
+			return mk(EPackage);
 		default:
 			null;
 		}
@@ -1298,11 +1273,13 @@ class Parser {
 		return path;
 	}
 
-	public function checkType(v,c) : Bool {
+	public function checkType(v:Map<String, Dynamic>, c:CType) : Bool {
 		var c=switch(c){
 			case CTPath(p):p[0];
 			default:null;
 		};
+		if(c==null)
+			return false;
 		if(!v.exists(c)){error(ELowerCaseType(c)); return false;}
 		else return true;
 	}
@@ -1756,6 +1733,11 @@ class Parser {
 		oldTokenMax = tokenMax;
 		tokenMin = (this.char < 0) ? readPos : readPos - 1;
 		var t = _token();
+		switch (t)
+		{
+			case TId(s): if(s=="cast"||s=="untyped") t=TOp(s);
+			default:
+		}
 		tokenMax = (this.char < 0) ? readPos - 1 : readPos - 2;
 		return t;
 	}

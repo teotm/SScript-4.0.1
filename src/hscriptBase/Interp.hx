@@ -35,7 +35,7 @@ class Interp {
 
 	#if haxe3
 	public var variables : Map<String,Dynamic>;
-	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool }>;
+	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType }>;
 	var binops : Map<String, Expr -> Expr -> Dynamic >;
 	#else
 	public var variables : Hash<Dynamic>;
@@ -45,7 +45,7 @@ class Interp {
 
 	var depth : Int;
 	var inTry : Bool;
-	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool } }>;
+	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType } }>;
 	var returnValue : Dynamic;
 
 	var parser : Parser;
@@ -97,6 +97,7 @@ class Interp {
 		variables.set("Float", Float);
 		variables.set("String", String);
 		variables.set("Dynamic", Dynamic);
+		variables.set("Array", Array);
 	}
 
 	public function posInfos(): PosInfos {
@@ -154,6 +155,21 @@ class Interp {
 
 	function assign( e1 : Expr, e2 : Expr ) : Dynamic {
 		var v = expr(e2);
+		var t = expr(e1);
+		if (Type.typeof(v) != TUnknown && Type.typeof(t) != TUnknown)
+		{
+			if (Type.typeof(v) != Type.typeof(t))
+			{
+				var type1 = Tools.getIdent(e1);
+				var type2 = Tools.getIdent(e2);
+				var locals = locals.get(type1);
+				var willGiveError = true;
+				if(locals != null)
+					willGiveError = locals.t != null;
+				if(willGiveError)
+				error(EUnmatcingType(Tools.getType(v),Tools.getType(t)));
+			}
+		}
 		switch( Tools.expr(e1) ) {
 		case EIdent(id,f):
 			if(locals.get(id)!=null&&locals.get(id).isFinal)
@@ -364,13 +380,14 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
+			if(t!=null)
 			parser.checkType(variables,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
-			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
+			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});}
 			else{
 				if(variables.exists(n))error(EDuplicate(n));
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});
 				variables.set(n,e==null?null:expr(e));
 			}
 			return null;
@@ -445,6 +462,10 @@ class Interp {
 				#else
 				return ~expr(e);
 				#end
+			case "cast":
+				return cast expr(e);
+			case "untyped":
+				return untyped { expr(e); };
 			default:
 				error(EInvalidOp(op));
 			}
@@ -572,8 +593,7 @@ class Interp {
 				variables.set( c , e );
 
 			return null;
-		case EPackage(p):
-			@:privateAccess if(p!=null)script.setPackagePath(p);
+		case EPackage:
 			return null;
 		case EFunction(params,fexpr,name,_,t):
 			var trk1 = switch(#if hscriptPos fexpr.e #else e #end){
