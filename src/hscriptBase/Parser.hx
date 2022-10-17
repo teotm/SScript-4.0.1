@@ -733,7 +733,7 @@ class Parser {
 				case TOp("="): e = parseExpr();
 				if(tp!=null) switch (tp) {
 					case CTPath(p,pr):
-						@:privateAccess if(p[0]!=Tools.getType(interp.expr(e)))
+						@:privateAccess if(p[0]!=Tools.getType(interp.expr(e)) && interp.expr(e) != null)
 						error(EUnmatcingType(Tools.getType(interp.expr(e)),p[0]));
 					default:
 				}
@@ -765,6 +765,12 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
+				if(tp!=null) switch (tp) {
+					case CTPath(p,pr):
+						@:privateAccess if(p[0]!=Tools.getType(interp.expr(e)) && interp.expr(e) != null)
+						error(EUnmatcingType(Tools.getType(interp.expr(e)),p[0]));
+					default:
+				}
 				case TComma | TStatement: push(tk);
 				switch(tp){
 					case CTPath(p,pr):

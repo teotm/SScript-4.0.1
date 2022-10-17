@@ -108,10 +108,16 @@ class Tools {
 			case TNull: "null";
 			case TInt: "Int";
 			case TFloat: "Float";
-			case TBool: "Bool";
-			case TClass(v): Type.getClassName(v);
+			case TBool: "Bool";  
+			case TClass(v): var name = Type.getClassName(v);
+			if(name.contains('.'))
+			{
+				var split = name.split('.');
+				split[split.length - 1];
+			}
+			else name;
 			case TFunction: "Void";
-			default: "" + Type.typeof(v) + "".replace("T","");
+			default: var string = "" + Type.typeof(v) + ""; string.replace("T","");
 		}
 	}
 
