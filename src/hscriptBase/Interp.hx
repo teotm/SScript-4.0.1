@@ -156,9 +156,9 @@ class Interp {
 	function assign( e1 : Expr, e2 : Expr ) : Dynamic {
 		var v = expr(e2);
 		var t = expr(e1);
-		if (Type.typeof(v) != TUnknown && Type.typeof(t) != TUnknown)
+		if(Type.typeof(v)!=TUnknown&&Type.typeof(t)!=TUnknown&&t!=null&&Type.typeof(t)!=TNull)
 		{
-			if (Type.typeof(v) != Type.typeof(t))
+			if(Type.typeof(v) != Type.typeof(t))
 			{
 				var type1 = Tools.getIdent(e1);
 				var type2 = Tools.getIdent(e2);
@@ -399,9 +399,8 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-			if(pf)
+			if(t!=null)
 			parser.checkType(variables,t);
-			else parser.checkType(locals,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});

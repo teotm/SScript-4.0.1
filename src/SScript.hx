@@ -285,7 +285,7 @@ class SScript
 
     /**
         Triggers itself when the script fails to execute.
-        Generally happens because of script errors.
+        Generally happens because of syntax errors.
 
         When triggered, calls the function named `errorThrow` (if exists) in the script.
         `errorThrow` must return `null` or nothing, if is not null it immediately stops itself from running
@@ -295,9 +295,12 @@ class SScript
     **/
     final public function error(err:Error)
     {
+        var oldTraces:String = '$traces';
+        traces = false;
         var call:Dynamic = call('errorThrow', [err]);
         if (call != null)
             throw '"errorThrow" must return null or nothing.';
+        traces = oldTraces == 'true' ? true : false;
         return call = null;
     }
 

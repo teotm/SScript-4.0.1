@@ -345,6 +345,7 @@ class Printer {
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
 			case EUnmatcingType(v,t): v + " should be " + t + ".";
 			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
+			case EUnknownIdentifier(v): "Unknown identifier: "  + v + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
 			case ELowerCaseType(t): "Type " + t + " cannot start with a lowercase letter.";

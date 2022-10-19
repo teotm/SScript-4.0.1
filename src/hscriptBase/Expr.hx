@@ -127,6 +127,7 @@ enum Error {
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
 	EUnexistingField( f : Dynamic , f2 : Dynamic );
+	EUnknownIdentifier( s : String );
 	ELowerCaseType( t : String );
 	EExpectedField( v : String );
 	EUpperCase( );

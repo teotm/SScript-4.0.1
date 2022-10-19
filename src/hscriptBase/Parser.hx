@@ -1286,7 +1286,7 @@ class Parser {
 		};
 		if(c==null)
 			return false;
-		if(!v.exists(c)){error(ELowerCaseType(c)); return false;}
+		if(!v.exists(c)){error(EUnknownIdentifier(c)); return false;}
 		else return true;
 	}
 
