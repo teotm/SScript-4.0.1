@@ -23,7 +23,7 @@ package hscriptBase;
 import haxe.display.JsonModuleTypes.JsonBinop;
 import haxe.PosInfos;
 import hscriptBase.Expr;
-import haxe.Constraints.IMap;
+import haxe.Constraints;
 
 private enum Stop {
 	SBreak;
@@ -35,7 +35,7 @@ class Interp {
 
 	#if haxe3
 	public var variables : Map<String,Dynamic>;
-	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType }>;
+	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> }>;
 	var binops : Map<String, Expr -> Expr -> Dynamic >;
 	#else
 	public var variables : Hash<Dynamic>;
@@ -45,7 +45,7 @@ class Interp {
 
 	var depth : Int;
 	var inTry : Bool;
-	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType } }>;
+	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> } }>;
 	var returnValue : Dynamic;
 
 	var parser : Parser;
@@ -108,6 +108,8 @@ class Interp {
 		return cast { fileName : "hscript", lineNumber : 0 };
 	}
 
+	var inFunc : Bool = false;
+
 	function initOps() {
 		var me = this;
 		#if haxe3
@@ -155,30 +157,16 @@ class Interp {
 
 	function assign( e1 : Expr, e2 : Expr ) : Dynamic {
 		var v = expr(e2);
-		var t = expr(e1);
-		if(Type.typeof(v)!=TUnknown&&Type.typeof(t)!=TUnknown&&t!=null&&Type.typeof(t)!=TNull)
-		{
-			if(Type.typeof(v) != Type.typeof(t))
-			{
-				var type1 = Tools.getIdent(e1);
-				var type2 = Tools.getIdent(e2);
-				var locals = locals.get(type1);
-				var willGiveError = true;
-				if(locals != null)
-					willGiveError = locals.t != null;
-				if(willGiveError)
-				error(EUnmatcingType(Tools.getType(v),Tools.getType(t)));
-			}
-		}
 		switch( Tools.expr(e1) ) {
 		case EIdent(id,f):
 			if(locals.get(id)!=null&&locals.get(id).isFinal)
 				return error(EInvalidFinal(id));
 			var l = locals.get(id);
 			if( l == null )
-				setVar(id,v)
-			else
-				l.r = v;
+				setVar(id,v);
+			else {
+					l.r = v;
+			}
 		case EField(e,f):
 			v = set(expr(e),f,v);
 		case EArray(e, index):
@@ -372,7 +360,7 @@ class Interp {
 			}
 		case EIdent(id):
 			return resolve(id);
-		case EVar(n,t,e,tc):
+		case EVar(n,t,e,tc,g):
 			if(trk!=null&&trk.v&&["privateField","inlineVar","publicField"].contains(trk.f))
 				error(EUnexpected(trk.n));
 			var pf = false;
@@ -384,10 +372,10 @@ class Interp {
 			parser.checkType(variables,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
-			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});}
+			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});}
 			else{
 				if(variables.exists(n))error(EDuplicate(n));
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});
 				variables.set(n,e==null?null:expr(e));
 			}
 			return null;
@@ -462,7 +450,7 @@ class Interp {
 				return ~expr(e);
 				#end
 			case "cast":
-				return cast expr(e);
+				return cast (expr(e));
 			case "untyped":
 				return untyped { expr(e); };
 			default:
@@ -603,7 +591,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):tr=p; break; break;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					}
@@ -935,6 +923,7 @@ class Interp {
 				}
 				else
 				{
+					@:noPrivateAccess
 					prop = Reflect.getProperty(o,f);
 				}
 

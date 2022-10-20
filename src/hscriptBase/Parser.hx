@@ -694,6 +694,8 @@ class Parser {
 		case "var":
 			var ident = getIdent();
 			var tk = token();
+			var getter = null;
+			var setter = null;
 			if(tk==TPOpen)
 			{
 				if(t==null) {
@@ -703,6 +705,7 @@ class Parser {
 				var nulls=["default","null","get","set"];
 				switch(tk2){
 					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
+					getter = s;
 					default: unexpected(tk2);
 				}
 				var tk2 = token();
@@ -713,6 +716,7 @@ class Parser {
 				var tk2 = token();
 				switch(tk2){
 					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
+					setter = s;
 					default: unexpected(tk2);
 				}
 				var tk2 = token();
@@ -752,7 +756,7 @@ class Parser {
 				}
 				default: unexpected(tk);
 			}
-			mk(EVar(ident,tp,e,t),p1,(e == null) ? tokenMax : pmax(e));
+			mk(EVar(ident,tp,e,t,[getter,setter,]),p1,(e == null) ? tokenMax : pmax(e));
 		case "final":
 			var ident = getIdent();
 			var tk = token();

@@ -45,7 +45,7 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
-	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken );
+	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken , ?g : Array<String> );
 	EFinal( f : String , ?t : CType , ?e : Expr , ?p : TrickyToken );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
