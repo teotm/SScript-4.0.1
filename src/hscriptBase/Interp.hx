@@ -23,7 +23,7 @@ package hscriptBase;
 import haxe.display.JsonModuleTypes.JsonBinop;
 import haxe.PosInfos;
 import hscriptBase.Expr;
-import haxe.Constraints.IMap;
+import haxe.Constraints;
 
 private enum Stop {
 	SBreak;
@@ -35,7 +35,7 @@ class Interp {
 
 	#if haxe3
 	public var variables : Map<String,Dynamic>;
-	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool }>;
+	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> }>;
 	var binops : Map<String, Expr -> Expr -> Dynamic >;
 	#else
 	public var variables : Hash<Dynamic>;
@@ -45,7 +45,7 @@ class Interp {
 
 	var depth : Int;
 	var inTry : Bool;
-	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool } }>;
+	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> } }>;
 	var returnValue : Dynamic;
 
 	var parser : Parser;
@@ -97,6 +97,7 @@ class Interp {
 		variables.set("Float", Float);
 		variables.set("String", String);
 		variables.set("Dynamic", Dynamic);
+		variables.set("Array", Array);
 	}
 
 	public function posInfos(): PosInfos {
@@ -106,6 +107,8 @@ class Interp {
 		#end
 		return cast { fileName : "hscript", lineNumber : 0 };
 	}
+
+	var inFunc : Bool = false;
 
 	function initOps() {
 		var me = this;
@@ -160,9 +163,10 @@ class Interp {
 				return error(EInvalidFinal(id));
 			var l = locals.get(id);
 			if( l == null )
-				setVar(id,v)
-			else
-				l.r = v;
+				setVar(id,v);
+			else {
+					l.r = v;
+			}
 		case EField(e,f):
 			v = set(expr(e),f,v);
 		case EArray(e, index):
@@ -356,7 +360,7 @@ class Interp {
 			}
 		case EIdent(id):
 			return resolve(id);
-		case EVar(n,t,e,tc):
+		case EVar(n,t,e,tc,g):
 			if(trk!=null&&trk.v&&["privateField","inlineVar","publicField"].contains(trk.f))
 				error(EUnexpected(trk.n));
 			var pf = false;
@@ -364,13 +368,14 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
+			if(t!=null)
 			parser.checkType(variables,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
-			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});}
+			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});}
 			else{
 				if(variables.exists(n))error(EDuplicate(n));
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false});
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});
 				variables.set(n,e==null?null:expr(e));
 			}
 			return null;
@@ -382,9 +387,8 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-			if(pf)
+			if(t!=null)
 			parser.checkType(variables,t);
-			else parser.checkType(locals,t);
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
@@ -445,6 +449,10 @@ class Interp {
 				#else
 				return ~expr(e);
 				#end
+			case "cast":
+				return cast (expr(e));
+			case "untyped":
+				return untyped { expr(e); };
 			default:
 				error(EInvalidOp(op));
 			}
@@ -572,8 +580,7 @@ class Interp {
 				variables.set( c , e );
 
 			return null;
-		case EPackage(p):
-			@:privateAccess if(p!=null)script.setPackagePath(p);
+		case EPackage:
 			return null;
 		case EFunction(params,fexpr,name,_,t):
 			var trk1 = switch(#if hscriptPos fexpr.e #else e #end){
@@ -584,7 +591,7 @@ class Interp {
 					if(e!=null)for(e in e){
 						switch(#if hscriptPos e.e #else e #end){
 							case EVar(n,t,e,p):tr=p; break;
-							case EFinal(n,t,e,p):tr=p; break; break;
+							case EFinal(n,t,e,p):tr=p; break;
 							default: tr=null;
 						}
 					}
@@ -916,6 +923,7 @@ class Interp {
 				}
 				else
 				{
+					@:noPrivateAccess
 					prop = Reflect.getProperty(o,f);
 				}
 
