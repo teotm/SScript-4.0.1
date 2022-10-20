@@ -45,7 +45,7 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
-	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken , ?g : Array<String> );
+	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken );
 	EFinal( f : String , ?t : CType , ?e : Expr , ?p : TrickyToken );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
@@ -71,7 +71,7 @@ enum Expr {
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
 	EImport( i : Dynamic, c : String );
-	EPackage;
+	EPackage( ?p : String );
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 }
@@ -127,7 +127,6 @@ enum Error {
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
 	EUnexistingField( f : Dynamic , f2 : Dynamic );
-	EUnknownIdentifier( s : String );
 	ELowerCaseType( t : String );
 	EExpectedField( v : String );
 	EUpperCase( );
