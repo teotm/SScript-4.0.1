@@ -77,6 +77,11 @@ class SScript
     public var privateAccess:Bool = true;
 
     /**
+        Package path of this script. Gets set automatically when you use `package`.
+    **/
+    public var packagePath(default, null):String = "";
+
+    /**
         Creates a new haxe script that will be ready to use after executing.
 
         @param scriptPath The script path or the script itself.
@@ -86,12 +91,6 @@ class SScript
     **/
     public function new(?scriptPath:String = "", ?preset:Bool = true, ?startExecute:Bool = true)
     {
-        #if !hscriptPos
-        trace("Define \"hscriptPos\" is recommended." 
-        #if openfl + " Add <haxedef name=\"hscriptPos\"/> to Project.xml to define." 
-        #else + " Add \"-D hscriptPos\" to compiler arguments to define." 
-        #end);
-        #end
         if (scriptPath != ""  && scriptPath != null)
         {
             if (FileSystem.exists(scriptPath))
@@ -407,4 +406,9 @@ class SScript
     {
 		return interp.variables;
 	}
+
+    function setPackagePath(p):String
+    {
+        return packagePath = p;
+    }
 }
