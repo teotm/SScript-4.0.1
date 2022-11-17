@@ -1202,7 +1202,6 @@ class Parser {
 		var tk = token();
 		switch( tk ) {
 		case TOp(op):
-
 			if( op == "->" ) {
 				// single arg reinterpretation of `f -> e` , `(f) -> e` and `(f:T) -> e`
 				switch( expr(e1) ) {
@@ -1235,8 +1234,9 @@ class Parser {
 			ensure(TBkClose);
 			return parseExprNext(mk(EArray(e1,e2),pmin(e1)));
 		case TQuestion:
-			var tk = token();
-			return switch (tk)
+			var oldPos_ = readPos;
+			var tk2 = token();
+			return switch (tk2)
 			{
 				case TQuestion:
 					var oldPos = readPos;
@@ -1248,12 +1248,17 @@ class Parser {
 					if(!assign){readPos=oldPos - 1; while(true){tk1 = token(); if(tk1 == TQuestion)break;}} //cheap way to revert tokens
 					e2 = parseExpr();
 					mk(ECoalesce(e1,e2,assign));
-				case TDoubleDot:
-					var e2 = parseExpr();
-					var e3 = parseExpr();
-					mk(ETernary(e1,e2,e3),pmin(e1),pmax(e3));
 				default:
-					error(EUnexpected(tokenString(tk))); null;
+					readPos=oldPos_ - 1;
+					while(true)
+					{
+						tk2=token();
+						if(tk2==TQuestion)break;
+					}
+					var e2 = parseExpr();
+					ensure(TDoubleDot);
+					var e3 = parseExpr();
+					return mk(ETernary(e1,e2,e3),pmin(e1),pmax(e3));
 			}
 		default:
 			push(tk);
