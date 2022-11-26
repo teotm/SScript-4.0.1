@@ -34,7 +34,7 @@ class Interp {
 
 	#if haxe3
 	public var variables : Map<String,Dynamic>;
-	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> }>;
+	var locals : Map<String,{ r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType }>;
 	var binops : Map<String, Expr -> Expr -> Dynamic >;
 	#else
 	public var variables : Hash<Dynamic>;
@@ -44,7 +44,7 @@ class Interp {
 
 	var depth : Int;
 	var inTry : Bool;
-	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:Array<String> } }>;
+	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType } }>;
 	var returnValue : Dynamic;
 
 	var parser : Parser;
@@ -169,11 +169,15 @@ class Interp {
 	}
 
 	function setVar( name : String, v : Dynamic ) {
+		var ftype:String = Tools.getType(variables.get(name));
+		var stype:String = Tools.getType(v);
+		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
 		variables.set(name, v);
 	}
 
 	function assign( e1 : Expr, e2 : Expr ) : Dynamic {
 		var v = expr(e2);
+		
 		switch( Tools.expr(e1) ) {
 		case EIdent(id,f):
 			if(locals.get(id)!=null&&locals.get(id).isFinal)
@@ -182,7 +186,14 @@ class Interp {
 			if( l == null )
 				setVar(id,v);
 			else {
-					l.r = v;
+				var t=l.t;
+				if(t!=null)
+				{
+					var ftype:String = Tools.ctToType(l.t);
+					var stype:String = Tools.getType(v);
+					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+				}
+				l.r = v;
 			}
 		case EField(e,f):
 			v = set(expr(e),f,v);
@@ -386,14 +397,18 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-			if(t!=null)
-			parser.checkType(variables,t);
+			if(t!=null&&e!=null)
+			{
+				var ftype:String = Tools.ctToType(t);
+				var stype:String = Tools.getType(null?null:expr(e));
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatcingType(ftype, stype));}
+			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
-			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});}
+			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});}
 			else{
 				if(variables.exists(n))error(EDuplicate(n));
-				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: g});
+				locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : false , isInline: null, t: t});
 				variables.set(n,e==null?null:expr(e));
 			}
 			return null;
@@ -405,8 +420,12 @@ class Interp {
 				pf=tc.f=="publicField"||tc.f=="inlineVar"||tc.f=="privateField";
 				pf=pf&&tc.v;
 			}
-			if(t!=null)
-			parser.checkType(variables,t);
+			if(t!=null&&e!=null)
+			{
+				var ftype:String = Tools.ctToType(t);
+				var stype:String = Tools.getType(null?null:expr(e));
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
 			locals.set(n,{ r : (e == null)?null:expr(e) , isFinal : true});
@@ -972,7 +991,7 @@ class Interp {
 	}
 
 	function fcall( o : Dynamic, f : String, args : Array<Dynamic> , ?i) : Dynamic {
-		return call(o, get(o, f), args,i);
+		return if (i) inline call(o, get(o, f), args,i) else call(o, get(o, f), args,i);
 	}
 
 	function call( o : Dynamic, f : Dynamic, args : Array<Dynamic> , ?i ) : Dynamic {

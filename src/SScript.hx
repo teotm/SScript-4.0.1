@@ -100,10 +100,6 @@ class SScript
 
             scriptFile = scriptPath;
         }
-        else 
-        {
-            scriptFile = SSId.unnullID();
-        }
 
         global.set(scriptFile, this);
 
@@ -373,7 +369,7 @@ class SScript
         if (!active || interp == null)
             return this;
 
-        var expr:Expr = parser.parseString(string);
+        var expr:Expr = parser.parseString(string, "SScript");
         interp.execute(expr);
 
         return this;
