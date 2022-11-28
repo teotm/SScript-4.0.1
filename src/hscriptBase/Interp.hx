@@ -400,7 +400,7 @@ class Interp {
 			if(t!=null&&e!=null)
 			{
 				var ftype:String = Tools.ctToType(t);
-				var stype:String = Tools.getType(null?null:expr(e));
+				var stype:String = Tools.getType(e==null?null:expr(e));
 				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatcingType(ftype, stype));}
 			}
 			if(!pf){
@@ -423,7 +423,7 @@ class Interp {
 			if(t!=null&&e!=null)
 			{
 				var ftype:String = Tools.ctToType(t);
-				var stype:String = Tools.getType(null?null:expr(e));
+				var stype:String = Tools.getType(e==null?null:expr(e));
 				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
 			}
 			if(!pf){
