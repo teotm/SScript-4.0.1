@@ -12,7 +12,7 @@ Things done so far:
 - [x] Null Coalescing
 - [x] Package
 - [x] Macro Support (Using macro will return haxe.macro.Expr, macro functions are not supported. See [Macro](https://github.com/TheWorldMachinima/SScript#Macro));
-- [x] True type declaration
+- [ ] True type declaration (In progress)
 - [ ] Enum
 - [ ] Abstract
 - [ ] Class
