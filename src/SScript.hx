@@ -81,7 +81,14 @@ class SScript
     **/
     public var packagePath(default, null):String = "";
 
-    public var checkForTypes:Bool;
+    #if hscriptPos
+    /**
+        If true, interpreter will try to check variable declarations in scripts.
+
+        False is recommended, interpreter may not be entirely accurate and it won't check functions.
+    **/
+    public var checkForTypes:Bool = false;
+    #end
 
     /**
         Creates a new haxe script that will be ready to use after executing.
@@ -107,6 +114,9 @@ class SScript
 
         interp = new Interp();
         interp.setScr(this);
+        #if hscriptPos
+        interp.checkForTypes = checkForTypes;
+        #end
 
         parser = new Parser();
         parser.script = this;

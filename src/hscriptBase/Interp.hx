@@ -51,6 +51,7 @@ class Interp {
 	var script : SScript;
 
 	#if hscriptPos
+	public var checkForTypes:Bool = false;
 	var curExpr : Expr;
 	#end
 
@@ -171,8 +172,10 @@ class Interp {
 	function setVar( name : String, v : Dynamic ) {
 		var ftype:String = Tools.getType(variables.get(name));
 		var stype:String = Tools.getType(v);
-		if(script.checkForTypes)
+		#if hscriptPos
+		if(checkForTypes)
 		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+		#end
 		variables.set(name, v);
 	}
 
@@ -192,8 +195,10 @@ class Interp {
 				{
 					var ftype:String = Tools.ctToType(l.t);
 					var stype:String = Tools.getType(v);
-					if(script.checkForTypes)
+					#if hscriptPos
+					if(checkForTypes)
 					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+					#end
 				}
 				l.r = v;
 			}
@@ -405,7 +410,9 @@ class Interp {
 			{
 				var ftype:String = Tools.ctToType(t);
 				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(script.checkForTypes)if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatcingType(ftype, stype));}
+				#if hscriptPos
+				if(checkForTypes)if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatcingType(ftype, stype));}
+				#end
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
@@ -428,7 +435,8 @@ class Interp {
 			{
 				var ftype:String = Tools.ctToType(t);
 				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(script.checkForTypes)if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+				#if hscriptPos if(checkForTypes)if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+				#end
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
