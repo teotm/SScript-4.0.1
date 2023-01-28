@@ -81,8 +81,6 @@ class SScript
     **/
     public var packagePath(default, null):String = "";
 
-    public var checkForTypes:Bool;
-
     /**
         Creates a new haxe script that will be ready to use after executing.
 
