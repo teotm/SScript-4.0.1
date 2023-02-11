@@ -501,12 +501,8 @@ class Interp {
 			}
 
 			var inl=false;
-			try{
+			if(locals.get(id) != null&&locals.get(id).isInline!=null)
 				inl=locals.get(id).isInline;
-			}
-			catch(e){
-				inl = false;
-			}
 			var args = new Array();
 			for( p in params )
 				args.push(expr(p));
