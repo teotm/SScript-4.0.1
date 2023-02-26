@@ -173,7 +173,7 @@ class SScript
                     trace("This script is not active!");
             }
 
-            return this;
+            return null;
         }
 
         interp.variables.set(key, obj);
@@ -190,7 +190,7 @@ class SScript
     public function unset(key:String):SScript
     {
         if (interp == null || !active || key == null || !interp.variables.exists(key))
-            return this;
+            return null;
 
         interp.variables.remove(key);
         return this;
@@ -228,7 +228,7 @@ class SScript
         If you do not execute this script and `call` a function, script will ignore your call.
         
         @param func Function name in script file. 
-        @param args Arguments for the `func`.
+        @param args Arguments for the `func`. If the function does not require arguments, leave it null.
         @return Returns an unique structure that contains called function, returned value etc.
      **/
     public function call(func:String, ?args:Array<Dynamic>):SScriptCall
@@ -237,11 +237,16 @@ class SScript
         var caller:SScriptCall = {fileName: scriptFile, exceptions: [], calledFunction: func, succeeded: false, returnValue: null};
         if (args == null)
             args = new Array();
-
+        function pushException(e:String)
+        {
+            caller.exceptions.push(new Exception(e));
+        }
         if (func == null)
         {
             if (traces)
                 trace('Function name cannot be null for $scriptFile!');
+
+            pushException('Function name cannot be null for $scriptFile!');
             return caller;
         }
 
@@ -249,6 +254,8 @@ class SScript
         {
             if (traces)
                 trace('Arguments cannot be null for $scriptFile!');
+
+            pushException('Arguments cannot be null for $scriptFile!');
             return caller;
         }
 

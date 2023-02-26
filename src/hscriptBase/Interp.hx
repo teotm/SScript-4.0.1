@@ -318,7 +318,32 @@ class Interp {
 		locals = new Hash();
 		#end
 		declared = new Array();
-		return exprReturn(expr);
+		var r = exprReturn(expr);
+		switch Tools.expr(expr){
+			case EBlock(e):
+				var imports:Int = 0;
+				var pack:Int = 0;
+				for(i in e){
+					switch Tools.expr(i)
+					{
+						case EPackage(_):
+							if(e.indexOf(i)>0)
+								error(ECustom('Unexpected package'));
+							else if(pack > 1)
+								error(ECustom('Multiple packages declared'));
+							pack++;
+						case EImport(_,_,_):
+							if(e.indexOf(i)>imports + pack)
+								error(ECustom('Unexpected import'));
+							imports++;
+						case _:
+					}
+				}
+				if(pack > 1)
+					error(ECustom('Multiple packages ($pack) declared'));
+			case _:
+		}
+		return r;
 	}
 
 	function exprReturn(e,?p) : Dynamic {
@@ -625,8 +650,6 @@ class Interp {
 			if(p!=p.toLowerCase())
 				error(ECustom('Package path cannot have capital letters.'));
 			@:privateAccess script.setPackagePath(p==null?"":p);
-			if(trk!=null)
-				error(ECustom('Unexpected package'));
 			return null;
 		case EFunction(params,fexpr,name,_,t,d):
 			var trk1 = switch(#if hscriptPos fexpr.e #else e #end){
