@@ -11,6 +11,7 @@ Things done so far:
 - [x] Advanced call
 - [x] Null Coalescing
 - [x] Package
+- [x] Dynamic Functions
 - [ ] True type declaration (In progress)
 - [ ] Enum
 - [ ] Abstract

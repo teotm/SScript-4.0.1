@@ -1,11 +1,23 @@
 package;
 
 import haxe.Constraints;
+import haxe.Exception;
+import haxe.macro.Context;
+import haxe.macro.Compiler;
+
 import hscriptBase.*;
 import hscriptBase.Expr;
 
 import sys.FileSystem;
 import sys.io.File;
+
+typedef SScriptCall = {
+    public var ?fileName(default, null):String;
+    public var succeeded(default, null):Bool;
+    public var calledFunction(default, null):String;
+    public var returnValue(default, null):Dynamic<Any>;
+    public var exceptions(default, null):Array<Exception>;
+}
 
 /**
     A simple class for haxe scripts.
@@ -24,6 +36,7 @@ import sys.io.File;
     sscript.call('traceNum', []);
     ```
 **/
+@:access(hscriptBase.Interp)
 class SScript
 {
     /**
@@ -60,7 +73,6 @@ class SScript
     **/
     public var active:Bool = true;
 
-
     /**
         This string tells you the path of your script file as a read-only string.
     **/
@@ -91,31 +103,35 @@ class SScript
     **/
     public function new(?scriptPath:String = "", ?preset:Bool = true, ?startExecute:Bool = true)
     {
-        if (scriptPath != ""  && scriptPath != null)
+        if (scriptPath != ""  && scriptPath != null && scriptPath.length > 0)
         {
             if (FileSystem.exists(scriptPath))
+            {
+                scriptFile = scriptPath;
                 script = File.getContent(scriptPath);
+            }
             else
                 script = scriptPath;
-
-            scriptFile = scriptPath;
         }
-
-        global.set(scriptFile, this);
 
         interp = new Interp();
         interp.setScr(this);
 
         parser = new Parser();
         parser.script = this;
-        @:privateAccess parser.setIntrp(interp);
+        parser.setIntrp(interp);
         interp.setPsr(parser);
 
         if (preset)
             this.preset();
 
-        if (startExecute && scriptPath != "")
+        if (startExecute && scriptPath != "" && scriptPath != null)
             execute();
+
+        if (FileSystem.exists(scriptPath))
+            global.set(scriptFile, this);
+        else if (script != null && script.length > 0)
+            global.set(script, this);
     }
 
     /**
@@ -144,6 +160,9 @@ class SScript
     **/
     public function set(key:String, obj:Dynamic):SScript
     {
+        if (Tools.keys.contains(key))
+            throw '$key is a keyword, set something else';
+
         if (interp == null || !active)
         {
             if (traces)
@@ -174,7 +193,6 @@ class SScript
             return this;
 
         interp.variables.remove(key);
-
         return this;
     }
 
@@ -206,44 +224,67 @@ class SScript
     /**
         Calls a function from the script file.
 
-        `ATTENTION:` You MUST execute the script at least once to get the functions to script's interpreter.
+        `WARNING:` You MUST execute the script at least once to get the functions to script's interpreter.
         If you do not execute this script and `call` a function, script will ignore your call.
         
         @param func Function name in script file. 
         @param args Arguments for the `func`.
-        @return Returns the return value in the function. If the function is `Void` returns null.
+        @return Returns an unique structure that contains called function, returned value etc.
      **/
-    public function call(func:String, args:Array<Dynamic>):Dynamic
+    public function call(func:String, ?args:Array<Dynamic>):SScriptCall
     {
+        var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
+        var caller:SScriptCall = {fileName: scriptFile, exceptions: [], calledFunction: func, succeeded: false, returnValue: null};
+        if (args == null)
+            args = new Array();
+
         if (func == null)
         {
             if (traces)
                 trace('Function name cannot be null for $scriptFile!');
-            return null;
+            return caller;
         }
 
         if (args == null)
         {
             if (traces)
                 trace('Arguments cannot be null for $scriptFile!');
-            return null;
+            return caller;
         }
 
-        if (interp == null || !interp.variables.exists(func))
+        if (interp == null || !exists(func))
         { 
             if (traces)
             {
                 if (interp == null) 
+                {
                     trace('Interpreter is null!');
+                    caller.exceptions.push(new Exception('Interpreter is null!'));
+                }
                 else 
+                {    
                     trace('Function $func does not exist in $scriptFile.'); 
+                    caller.exceptions.push(new Exception('Function $func does not exist in $scriptFile.'));
+                }
             }
-
-            return null;
+            return caller;
         }
-   
-        var functionField:Function = get(func);
-        return Reflect.callMethod(this, functionField, args);
+        if (Type.typeof(get(func)) != TFunction)
+        {
+            if (traces)
+                trace('$func is not a function');
+
+            caller.exceptions.push(new Exception('$func is not a function'));
+            return caller;
+        }
+        try 
+        {
+            var functionField:Dynamic = Reflect.callMethod(this, get(func), args);
+            caller = {fileName: scriptFile, exceptions: [], calledFunction: func, succeeded: true, returnValue: functionField};
+        }
+        catch (e) caller.exceptions.push(e);
+        
+        return caller; 
     }
 
     /**
@@ -268,71 +309,16 @@ class SScript
     /**
         Tells if the `key` exists in this script's interpreter.
         @param key The string to look for.
-        @return Return is true if `key` is found in interpreter.
+        @return Returns true if `key` is found in interpreter.
     **/
     public function exists(key:String):Bool
     {
         if (interp == null)
             return false;
-
+        if (interp.locals.exists(key))
+            return interp.locals.exists(key);
+        
         return interp.variables.exists(key);
-    }
-
-    /**
-        Triggers itself when the script fails to execute.
-        Generally happens because of syntax errors.
-
-        When triggered, calls the function named `errorThrow` (if exists) in the script.
-        `errorThrow` must return `null` or nothing, if is not null it immediately stops itself from running
-        and throws an exception.
-
-        Always returns null and cannot be overriden.
-    **/
-    final public function error(err:Error)
-    {
-        var oldTraces:String = '$traces';
-        traces = false;
-        var call:Dynamic = call('errorThrow', [err]);
-        if (call != null)
-            throw '"errorThrow" must return null or nothing.';
-        traces = oldTraces == 'true' ? true : false;
-        return call = null;
-    }
-
-    /**
-        Tells if any of the keys in `keys` array exist in `interp`.
-
-        If one key or more exist in `interp` returns true.
-    @param keys Key array you want to check.
-    **/
-    public function anyExists(keys:Array<String>):Bool
-    {
-        if (interp == null)
-            return false;
-
-        for (key in keys)
-            if (exists(key))
-                return true;
-            
-        return false;
-    }
-
-    /**
-        Tells if all of keys in `keys` array exist in `interp`.
-
-        If one key or more do not exist in `interp`, it immediately breaks itself and returns false.
-        @param keys Key array you want to check.
-    **/
-    public function allExists(keys:Array<String>):Bool
-    {
-        if (interp == null)
-            return false;
-
-        for (key in keys)
-            if (!exists(key))
-                return false;
-
-        return true;
     }
 
     /**
@@ -347,20 +333,20 @@ class SScript
         set('Sys', Sys);
         set('Date', Date);
         set('DateTools', DateTools);
-        set('PI', Math.PI);
-        set('POSITIVE_INFINITY', 1 / 0);
-        set('NEGATIVE_INFINITY', -1 / 0);
-        set('NaN', 0 / 0);
+        set('Compiler', Compiler);
+        set('Context', Context);
         set('File', File);
         set('FileSystem', FileSystem);
-        set('this', this);
         set('SScript', SScript);
     }
 
     /**
         Executes a string once instead of a script file.
 
-        This does not change your `script` and `scriptFile`.
+        This does not change your `scriptFile` but it changes `script`.
+
+        This function should be avoided whenever possible, when you do a string a lot variables remain unchanged.
+        Always try to use a script file.
         @param string String you want to execute.
         @return Returns this instance for chaining.
     **/
@@ -368,34 +354,15 @@ class SScript
     {
         if (!active || interp == null)
             return this;
+        else if (string == null || string.length < 0)
+            return this;
 
         var expr:Expr = parser.parseString(string, "SScript");
         interp.execute(expr);
-
+        script = string;
+        if (!global.exists(script))
+            global.set(script, this);
         return this;
-    }
-
-    /**
-        Sets a variable in every SScript ever created.
-    **/
-    public static function setInGlobal(key:String, obj:Null<Dynamic>):Void
-    {
-        for (i in global)
-        {
-            i.set(key, obj);
-        }
-    }
-
-    /**
-        Sets a variable in multiple scripts.
-        @param scriptArray The scripts you want to set the variable to.
-        @param key Variable name.
-        @param obj The object to set to `key`.
-    **/
-    public static function setMultiple(scriptArray:Array<SScript>, key:String, obj:Dynamic):Void
-    {
-        return for (script in scriptArray)
-            script.set(key, obj);
     }
 
 	function get_variables():Map<String, Dynamic> 
