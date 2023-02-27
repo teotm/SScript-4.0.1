@@ -2052,14 +2052,6 @@ class Parser {
 		}
 	}
 
-	function defined(s){
-		return Context.defined(s);
-	}
-
-	 function definedValue(s){
-		return Context.definedValue(s);
-	}
-
 	function evalPreproCond( e : Expr ) {
 		switch( expr(e) ) {
 		case EIdent(id):
@@ -2072,34 +2064,6 @@ class Parser {
 			return evalPreproCond(e1) && evalPreproCond(e2);
 		case EBinop("||", e1, e2):
 			return evalPreproCond(e1) || evalPreproCond(e2);
-		case EBinop("==", e1, e2):
-			switch(expr(e1)){
-				case EIdent(v):
-					var defined = definedValue(v);
-					switch expr(e2){
-						case EIdent(ve):
-							return defined==definedValue(ve);
-						case EConst(CString(s)):
-							return defined==s;
-						default:
-					}
-				default:
-			}
-			return false;
-		case EBinop("!=", e1, e2):
-			switch(expr(e1)){
-				case EIdent(v):
-					var defined = definedValue(v);
-					switch e2.e{
-						case EIdent(ve):
-							return defined!=definedValue(ve);
-						case EConst(CString(s)):
-							return defined!=s;
-						default:
-					}
-				default:
-			}
-			return false;
 		default:
 			error(EInvalidPreprocessor("Can't eval " + expr(e).getName()), readPos, readPos);
 			return false;
