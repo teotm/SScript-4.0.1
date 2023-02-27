@@ -15,7 +15,7 @@ typedef SScriptCall = {
     public var ?fileName(default, null):String;
     public var succeeded(default, null):Bool;
     public var calledFunction(default, null):String;
-    public var returnValue(default, null):Dynamic<Any>;
+    public var returnValue(default, null):Dynamic;
     public var exceptions(default, null):Array<Exception>;
 }
 

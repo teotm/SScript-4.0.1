@@ -2052,10 +2052,18 @@ class Parser {
 		}
 	}
 
+	function defined(s){
+		return Context.defined(s);
+	}
+
+	 function definedValue(s){
+		return Context.definedValue(s);
+	}
+
 	function evalPreproCond( e : Expr ) {
 		switch( expr(e) ) {
 		case EIdent(id):
-			return Context.defined(id);
+			return true;
 		case EUnop("!", _, e):
 			return !!!evalPreproCond(e);
 		case EParent(e):
@@ -2067,10 +2075,10 @@ class Parser {
 		case EBinop("==", e1, e2):
 			switch(expr(e1)){
 				case EIdent(v):
-					var defined = Context.definedValue(v);
+					var defined = definedValue(v);
 					switch expr(e2){
 						case EIdent(ve):
-							return defined==Context.definedValue(ve);
+							return defined==definedValue(ve);
 						case EConst(CString(s)):
 							return defined==s;
 						default:
@@ -2081,10 +2089,10 @@ class Parser {
 		case EBinop("!=", e1, e2):
 			switch(expr(e1)){
 				case EIdent(v):
-					var defined = Context.definedValue(v);
+					var defined = definedValue(v);
 					switch e2.e{
 						case EIdent(ve):
-							return defined!=Context.definedValue(ve);
+							return defined!=definedValue(ve);
 						case EConst(CString(s)):
 							return defined!=s;
 						default:
