@@ -10,7 +10,7 @@ class Macro
         var defines = Context.getDefines();
         if (defines.get('dce') != 'no')
         {
-            trace('SScript is turning of DCE');
+            trace('SScript is turning off DCE');
             Compiler.define('dce', 'no');
         }
         return macro null;    
