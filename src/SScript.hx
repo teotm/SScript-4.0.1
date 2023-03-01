@@ -144,7 +144,7 @@ class SScript
         if (interp == null || !active)
             return;
 
-        var expr:Expr = parser.parseString(script, scriptFile);
+        var expr:Expr = parser.parseString(script, if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScript");
 	    interp.execute(expr);
     }
     
@@ -155,13 +155,15 @@ class SScript
         
         If you want to set a variable to multiple scripts check the `setOnscripts` function.
         @param key Variable name.
-        @param obj The object to set. 
+        @param obj The object to set. If the object is a macro class, function will be aborted.
         @return Returns this instance for chaining.
     **/
     public function set(key:String, obj:Dynamic):SScript
     {
         if (Tools.keys.contains(key))
             throw '$key is a keyword, set something else';
+        else if (macro.Macro.macroClasses.contains(obj))
+            throw '$key cannot be a Macro class';
 
         if (interp == null || !active)
         {
@@ -176,8 +178,77 @@ class SScript
             return null;
         }
 
-        interp.variables.set(key, obj);
+        interp.variables[key] = obj;
         return this;
+    }
+
+    /**
+        This is a helper function to set classes easily.
+        For example, if `cl` is `sys.io.File` it will be set as `File`.
+        @param cl The class to set. It cannot be macro classes.
+        @return this instance for chaining.
+    **/
+    public function setClass(cl:Class<Dynamic>):SScript
+    {
+        if (cl == null)
+        {
+            if (traces)
+            {
+                trace('Class cannot be null');
+            }
+
+            return null;
+        }
+
+        var clName:String = Type.getClassName(cl);
+        if (clName.split('.').length > 1)
+        {
+            clName = clName.split('.')[clName.split('.').length - 1];
+        }
+
+        set(clName, cl);
+        return this;
+    }
+
+    /**
+        Sets a class to this script from a string.
+        `cl` will be formatted, for example: `sys.io.File` -> `File`.
+        @param cl The class to set. It cannot be macro classes.
+        @return this instance for chaining.
+    **/
+    public function setClassString(cl:String):SScript
+    {
+        if (cl == null || cl.length < 1)
+        {
+            if (traces)
+                trace('Class cannot be null');
+
+            return null;
+        }
+
+        var cls:Class<Dynamic> = Type.resolveClass(cl);
+        if (cl.split('.').length > 1)
+        {
+            cl = cl.split('.')[cl.split('.').length - 1];
+        }
+
+        if (cls != null)
+            set(cl, cls);
+        return this;
+    }
+
+    /**
+        Returns the local variables in this script as a fresh map.
+    **/
+    public function locals():Map<String, Dynamic>
+    {
+        var newMap:Map<String, Dynamic> = new Map();
+        for (i in interp.locals.keys())
+        {
+            var v:Dynamic = interp.locals[i];
+            newMap[i] = v;
+        }
+        return newMap;
     }
 
     /**
@@ -218,7 +289,7 @@ class SScript
             return null;
         }
 
-        return if (exists(key)) interp.variables.get(key) else null;
+        return if (exists(key)) interp.variables[key] else null;
     }
 
     /**
@@ -340,8 +411,6 @@ class SScript
         set('Sys', Sys);
         set('Date', Date);
         set('DateTools', DateTools);
-        set('Compiler', Compiler);
-        set('Context', Context);
         set('File', File);
         set('FileSystem', FileSystem);
         set('SScript', SScript);
