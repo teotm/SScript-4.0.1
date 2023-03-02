@@ -1,5 +1,5 @@
 # SScript 
-SScript is a project made to extend HScript and make it eaiser to use. It supports almost all of the Haxe structures.
+SScript is a project made to extend HScript and make it easier to use. It supports almost all of the Haxe structures.
 
 Things done so far:
 - [x] It's own class
