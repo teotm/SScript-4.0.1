@@ -12,26 +12,7 @@ Things done so far:
 - [x] Null Coalescing
 - [x] Package
 - [x] Dynamic Functions
-- [ ] True type declaration (In progress)
+- [x] True type declaration
+- [ ] Class (In progress)
 - [ ] Enum
 - [ ] Abstract
-- [ ] Class
-
-## Function in its class
-
-### New
-Creates a new **SScript**, which you can create with a file or script.
-New function sets some basic classes (Math, File, FileSystem etc.) which you can disable.
-
-### Set
-Sets any variable to script. You can access to set variable anywhere.
-
-### Get
-Gets a variable in script's variables. Will return null if the variable does not exist.
-
-### Call
-Calls a function in the script. Will return null if the called function does not exist.
-
-### Error
-Calls itself when an exception is thrown, caused by script issues.
-Also calls **errorThrow** in script.
