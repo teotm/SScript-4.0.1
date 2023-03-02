@@ -1,13 +1,13 @@
 package macro;
 
-import haxe.macro.TypeTools;
-import haxe.macro.ExprTools;
-import haxe.macro.TypedExprTools;
-import haxe.macro.ComplexTypeTools;
-import haxe.macro.Printer;
-import haxe.macro.MacroStringTools;
 import haxe.macro.Compiler;
+import haxe.macro.ComplexTypeTools;
 import haxe.macro.Context;
+import haxe.macro.ExprTools;
+import haxe.macro.MacroStringTools;
+import haxe.macro.Printer;
+import haxe.macro.TypeTools;
+import haxe.macro.TypedExprTools;
 
 class Macro
 {
@@ -19,10 +19,10 @@ class Macro
     macro public static function turnDCEOff() 
     {
         var defines = Context.getDefines();
-        if (defines.get('dce') != 'no')
+        if (defines.exists('dce') && defines['dce'] != 'no')
         {
-            trace('SScript is turning off DCE');
-            Compiler.define('dce', 'no');
+            Sys.println('Dead Code Elimination (DCE) is ${defines[dce]}, meaning it can cause minor issues with SScript.');
+            Sys.println('Turning off DCE is not mandatory but it is strongly recommended.');
         }
         return macro null;    
     }

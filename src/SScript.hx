@@ -1,9 +1,6 @@
 package;
 
-import haxe.Constraints;
 import haxe.Exception;
-import haxe.macro.Context;
-import haxe.macro.Compiler;
 
 import hscriptBase.*;
 import hscriptBase.Expr;
@@ -239,6 +236,8 @@ class SScript
 
     /**
         Returns the local variables in this script as a fresh map.
+        
+        Changing any value in returned map will not change the script in any way.
     **/
     public function locals():Map<String, Dynamic>
     {
@@ -289,6 +288,10 @@ class SScript
             return null;
         }
 
+        var locals = locals().copy();
+        if (locals.exists(key))
+            return locals[key];
+        
         return if (exists(key)) interp.variables[key] else null;
     }
 
