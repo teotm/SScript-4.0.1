@@ -21,7 +21,7 @@ class Macro
         var defines = Context.getDefines();
         if (defines.exists('dce') && defines['dce'] != 'no')
         {
-            Sys.println('Dead Code Elimination (DCE) is ${defines[dce]}, meaning it can cause minor issues with SScript.');
+            Sys.println('Dead Code Elimination (DCE) is ${defines['dce']}, meaning it can cause minor issues with SScript.');
             Sys.println('Turning off DCE is not mandatory but it is strongly recommended.');
         }
         return macro null;    
