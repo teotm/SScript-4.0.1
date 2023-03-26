@@ -14,5 +14,3 @@ Things done so far:
 - [x] Dynamic Functions
 - [x] True type declaration
 - [ ] Class (In progress)
-- [ ] Enum
-- [ ] Abstract
