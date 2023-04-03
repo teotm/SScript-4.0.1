@@ -1512,7 +1512,7 @@ class Parser {
 
 	// ------------------------ module -------------------------------
 
-	public function parseModule( content : String, ?origin : String = "hscript" ) {
+	public function parseModule( content : String, ?origin : String ) {
 		initParser(origin);
 		input = content;
 		readPos = 0;
@@ -1568,7 +1568,7 @@ class Parser {
 		case "package":
 			var path = parsePath();
 			ensure(TStatement);
-			return null;
+			return DPackage(path);
 		case "import":
 			var path = [getIdent()];
 			var star = false;

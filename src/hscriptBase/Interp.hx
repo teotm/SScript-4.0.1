@@ -108,7 +108,7 @@ class Interp {
 			if (curExpr != null)
 				return cast { fileName : curExpr.origin, lineNumber : curExpr.line };
 		#end
-		return cast { fileName : "hscript", lineNumber : 0 };
+		return cast { fileName : "SScript", lineNumber : 0 };
 	}
 
 	var inFunc : Bool = false;
@@ -498,7 +498,7 @@ class Interp {
 			restore(old);
 			return v;
 		case EField(e,f):
-			return get(expr(e),f,#if hscriptPos e.e #else e #end);
+			return get(expr(e),f);
 		case EBinop(op,e1,e2):
 			var fop = binops.get(op);
 			if( fop == null ) error(EInvalidOp(op));
@@ -533,9 +533,6 @@ class Interp {
 				default: null;
 			}
 
-			var inl=false;
-			if(locals.get(id) != null&&locals.get(id).isInline!=null)
-				inl=locals.get(id).isInline;
 			var args = new Array();
 			for( p in params )
 				args.push(expr(p));
@@ -544,9 +541,9 @@ class Interp {
 			case EField(e,f):
 				var obj = expr(e);
 				if( obj == null ) error(EInvalidAccess(f));
-				return fcall(obj,f,args,inl);
+				return fcall(obj,f,args);
 			default:
-				return call(null,expr(e),args,inl);
+				return call(null,expr(e),args);
 			}
 		case EIf(econd,e1,e2):
 			var trk1 = if(e1!=null) switch(#if hscriptPos e1.e #else e1 #end){
@@ -980,7 +977,7 @@ class Interp {
 		cast(map, haxe.Constraints.IMap<Dynamic, Dynamic>).set(key, value);
 	}
 
-	function get( o : Dynamic, f : String , ?en) : Dynamic {
+	function get( o : Dynamic, f : String ) : Dynamic {
 		if ( o == null ) error(EInvalidAccess(f));
 		return {
 			#if php
@@ -993,16 +990,7 @@ class Interp {
 			#else
 			try{
 				var prop=null;
-				if(script.privateAccess)
-				{	
-					@:privateAccess
-					prop = Reflect.getProperty(o,f);
-				}
-				else
-				{
-					@:noPrivateAccess
-					prop = Reflect.getProperty(o,f);
-				}
+				prop = Reflect.getProperty(o,f);
 
 				if(prop==null)
 				{
@@ -1023,12 +1011,12 @@ class Interp {
 		return v;
 	}
 
-	function fcall( o : Dynamic, f : String, args : Array<Dynamic> , ?i) : Dynamic {
-		return if (i) inline call(o, get(o, f), args,i) else call(o, get(o, f), args,i);
+	function fcall( o : Dynamic, f : String, args : Array<Dynamic>) : Dynamic {
+		return call(o, get(o, f), args);
 	}
 
-	function call( o : Dynamic, f : Dynamic, args : Array<Dynamic> , ?i ) : Dynamic {
-		return if (i) inline Reflect.callMethod(o,f,args) else Reflect.callMethod(o,f,args);
+	function call( o : Dynamic, f : Dynamic, args : Array<Dynamic>) : Dynamic {
+		return Reflect.callMethod(o,f,args);
 	}
 
 	function cnew( cl : String, args : Array<Dynamic> ) : Dynamic {

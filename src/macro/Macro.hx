@@ -11,19 +11,23 @@ import haxe.macro.TypedExprTools;
 
 class Macro
 {
-    public static var macroClasses:Array<Class<Dynamic>> = [
-        Compiler, Context, MacroStringTools, Printer, ComplexTypeTools, 
-        TypedExprTools, ExprTools, TypeTools,
-    ];
+	public static var macroClasses:Array<Class<Dynamic>> = [
+		Compiler,
+		Context,
+		MacroStringTools,
+		Printer,
+		ComplexTypeTools,
+		TypedExprTools,
+		ExprTools,
+		TypeTools,
+	];
 
-    macro public static function turnDCEOff() 
-    {
-        var defines = Context.getDefines();
-        if (defines.exists('dce') && defines['dce'] != 'no')
-        {
-            Sys.println('Dead Code Elimination (DCE) is ${defines['dce']}, meaning it can cause minor issues with SScript.');
-            Sys.println('Turning off DCE is not mandatory but it is strongly recommended.');
-        }
-        return macro null;    
-    }
+	public static macro function checkSys()
+	{
+		final defines = Context.getDefines();
+		if (!defines.exists('sys'))
+			throw 'You cannot access the sys package while targeting ${defines.get('target.name')}';
+
+		return macro null;
+	}
 }
