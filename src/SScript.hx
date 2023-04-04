@@ -45,13 +45,6 @@ typedef SScriptCall =
 class SScript
 {
 	/**
-		Map of the all created scripts.
-
-		When you create a new script, it will be set in this map, `global`.
-	**/
-	public static var global(default, null):Map<String, SScript> = new Map();
-
-	/**
 		Use this to access to interpreter's variables!
 	**/
 	public var variables(get, never):Map<String, Dynamic>;
@@ -128,7 +121,7 @@ class SScript
 	public var currentSuperClass(get, never):Class<Dynamic>;
 
 	var parsingExceptions(default, null):Array<Exception> = new Array();
-	@:noPrivateAccess var scriptX(default, null):SScriptX;
+	var scriptX(default, null):SScriptX;
 
 	/**
 		Creates a new haxe script that will be ready to use after executing.
@@ -159,6 +152,9 @@ class SScript
 		parser.setIntrp(interp);
 		interp.setPsr(parser);
 
+		if (preset)
+			this.preset();
+
 		if (scriptPath != null && scriptPath.length > 0)
 			try
 				scriptX = new SScriptX(scriptPath)
@@ -167,16 +163,12 @@ class SScript
 				parsingExceptions.push(new Exception(e.details()));
 				scriptX = null;
 			}
-		if (preset)
-			this.preset();
 
 		if (startExecute && scriptPath != "" && scriptPath != null)
 			execute();
 
-		if (FileSystem.exists(scriptPath))
-			global.set(scriptFile, this);
-		else if (script != null && script.length > 0)
-			global.set(script, this);
+		if (scriptX != null)
+			scriptX.script = this;
 	}
 
 	/**
@@ -216,6 +208,7 @@ class SScript
 		else if (macro.Macro.macroClasses.contains(obj))
 			throw '$key cannot be a Macro class (tried to set ${Type.getClassName(obj)})';
 
+		SScriptX.variables[key] = obj;
 		if (scriptX != null)
 		{
 			var value:Dynamic = obj;
@@ -238,7 +231,6 @@ class SScript
 
 			interp.variables[key] = obj;
 		}
-		SScriptX.variables[key] = obj;
 
 		return this;
 	}
@@ -424,7 +416,7 @@ class SScript
 	{
 		var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
 		var caller:SScriptCall = {
-			exceptions: parsingExceptions.copy(),
+			exceptions: [],
 			calledFunction: func,
 			succeeded: false,
 			returnValue: null
@@ -432,15 +424,22 @@ class SScript
 		if (scriptFile != null && scriptFile.length > 0)
 			caller = {
 				fileName: scriptFile,
-				exceptions: parsingExceptions.copy(),
+				exceptions: [],
 				calledFunction: func,
 				succeeded: false,
 				returnValue: null
 			};
 		if (args == null)
 			args = new Array();
+
+		var pushedExceptions:Array<String> = new Array();
 		function pushException(e:String)
-			caller.exceptions.push(new Exception(e));
+		{
+			if (!pushedExceptions.contains(e))
+				caller.exceptions.push(new Exception(e));
+			
+			pushedExceptions.push(e);
+		}
 		if (func == null)
 		{
 			if (traces)
@@ -449,58 +448,80 @@ class SScript
 			pushException('Function name cannot be null for $scriptFile!');
 			return caller;
 		}
+		var callX:SScriptCall = null;
 		if (scriptX != null)
 		{
-			return scriptX.callFunction(func, args, className);
+			callX = scriptX.callFunction(func);
 		}
-
-		if (exists(func) && Type.typeof(get(func)) != TFunction)
+		else
 		{
-			if (traces)
-				trace('$func is not a function');
+			if (exists(func) && Type.typeof(get(func)) != TFunction)
+			{
+				if (traces)
+					trace('$func is not a function');
 
-			caller.exceptions.push(new Exception('$func is not a function'));
-			return caller;
-		}
+				pushException('$func is not a function');
+			}
 
-		if (interp == null || !exists(func))
-		{
-			if (traces)
+			else if (interp == null || !exists(func))
 			{
 				if (interp == null)
 				{
-					trace('Interpreter is null!');
-					caller.exceptions.push(new Exception('Interpreter is null!'));
+					if (traces)
+						trace('Interpreter is null!');
+					pushException('Interpreter is null!');
 				}
 				else
 				{
-					trace('Function $func does not exist in $scriptFile.');
-					caller.exceptions.push(new Exception('Function $func does not exist in $scriptFile.'));
+					if (traces)
+						trace('Function $func does not exist in $scriptFile.');
+
+					if (scriptFile != null && scriptFile.length > 1)
+						pushException('Function $func does not exist in $scriptFile.');
+					else 
+						pushException('Function $func does not exist in SScript instance.');
 				}
 			}
-			return caller;
+			else 
+			{
+				var oldCaller = caller;
+				try
+				{
+					var functionField:Dynamic = Reflect.callMethod(this, get(func), args);
+					caller = {
+						exceptions: caller.exceptions,
+						calledFunction: func,
+						succeeded: true,
+						returnValue: functionField
+					};
+					if (scriptFile != null && scriptFile.length > 0)
+						caller = {
+							fileName: scriptFile,
+							exceptions: caller.exceptions,
+							calledFunction: func,
+							succeeded: true,
+							returnValue: functionField
+						};
+				}
+				catch (e)
+				{
+					caller = oldCaller;
+					pushException(e.details());
+				}
+			}
 		}
-		try
+		if (!caller.succeeded && (callX == null || !callX.succeeded))
 		{
-			var functionField:Dynamic = Reflect.callMethod(this, get(func), args);
-			caller = {
-				exceptions: parsingExceptions.copy(),
-				calledFunction: func,
-				succeeded: true,
-				returnValue: functionField
-			};
-			if (scriptFile != null && scriptFile.length > 0)
-				caller = {
-					fileName: scriptFile,
-					exceptions: parsingExceptions.copy(),
-					calledFunction: func,
-					succeeded: true,
-					returnValue: functionField
-				};
+			for (i in parsingExceptions)
+			{
+				pushException(i.details());
+				
+				if (callX != null)
+					callX.exceptions.push(new Exception(i.details()));
+			}
 		}
-		catch (e)
-			pushException(e.details());
-		return caller;
+
+		return if (scriptX != null) callX else caller;
 	}
 
 	/**
@@ -620,8 +641,6 @@ class SScript
 		}
 
 		script = string;
-		if (!global.exists(script))
-			global.set(script, this);
 		return this;
 	}
 

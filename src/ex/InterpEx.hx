@@ -19,7 +19,6 @@ class InterpEx extends hscriptBase.Interp
 
 	public function new(proxy:AbstractScriptClass = null, ?push = true)
 	{
-		super.binops;
 		super();
 		_proxy = proxy;
 		variables.set("Type", Type);
