@@ -126,7 +126,7 @@ class Main {
 		script.setClass(ParentClass);
 		script.setClassString('ParentClass');
 		script.doString("
-				class Child extends Parent
+				class Child extends ParentClass
 				{
 					override function overrideThis()
 					{
@@ -195,3 +195,6 @@ It is recommended to override only `preset`, other functions were not written wi
 6. `currentScriptClass` changes based on `currentClass`, it is not an actual class but it is an abstract containing useful variables like `listFunctions` and more.
 
 7. `currentSuperClass` is the actual parent class of `currentScriptClass`. It's type is `Class<Dynamic>`.
+
+## Contact
+If you have any questions or requests, open an issue here or message me on my Discord (tahir#5885).

@@ -92,6 +92,11 @@ class SScript
 	public var traces:Bool;
 
 	/**
+		Tells if this script is in EX mode, in EX mode you can only use `class`, `import` and `package`.
+	**/
+	public var exMode(get, never):Bool;
+
+	/**
 		Package path of this script. Gets set automatically when you use `package`.
 	**/
 	public var packagePath(get, null):String = "";
@@ -122,6 +127,7 @@ class SScript
 	**/
 	public var currentSuperClass(get, never):Class<Dynamic>;
 
+	@:noPrivateAccess var parsingExceptions(default, null):Array<Exception> = new Array();
 	@:noPrivateAccess var scriptX(default, null):SScriptX;
 
 	/**
@@ -155,12 +161,12 @@ class SScript
 
 		if (scriptPath != null && scriptPath.length > 0)
 			try
-			{
-				scriptX = new SScriptX(scriptPath);
-			}
+				scriptX = new SScriptX(scriptPath)
 			catch (e)
+			{
+				parsingExceptions.push(new Exception(e.details()));
 				scriptX = null;
-
+			}
 		if (preset)
 			this.preset();
 
@@ -307,11 +313,13 @@ class SScript
 		if (scriptX != null)
 		{
 			var newMap:Map<String, Dynamic> = new Map();
-			for (i in scriptX.interpEX.locals.keys())
-			{
-				var v = scriptX.interpEX.locals[i];
-				newMap[i] = v.r;
-			}
+			if (scriptX.interpEX.locals != null)
+				for (i in scriptX.interpEX.locals.keys())
+				{
+					var v = scriptX.interpEX.locals[i];
+					if (v != null)
+						newMap[i] = v.r;
+				}
 			return newMap;
 		}
 
@@ -319,7 +327,8 @@ class SScript
 		for (i in interp.locals.keys())
 		{
 			var v = interp.locals[i];
-			newMap[i] = v.r;
+			if (v != null)
+				newMap[i] = v.r;
 		}
 		return newMap;
 	}
@@ -415,7 +424,7 @@ class SScript
 	{
 		var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
 		var caller:SScriptCall = {
-			exceptions: [],
+			exceptions: parsingExceptions.copy(),
 			calledFunction: func,
 			succeeded: false,
 			returnValue: null
@@ -423,7 +432,7 @@ class SScript
 		if (scriptFile != null && scriptFile.length > 0)
 			caller = {
 				fileName: scriptFile,
-				exceptions: [],
+				exceptions: parsingExceptions.copy(),
 				calledFunction: func,
 				succeeded: false,
 				returnValue: null
@@ -475,7 +484,7 @@ class SScript
 		{
 			var functionField:Dynamic = Reflect.callMethod(this, get(func), args);
 			caller = {
-				exceptions: [],
+				exceptions: parsingExceptions.copy(),
 				calledFunction: func,
 				succeeded: true,
 				returnValue: functionField
@@ -483,7 +492,7 @@ class SScript
 			if (scriptFile != null && scriptFile.length > 0)
 				caller = {
 					fileName: scriptFile,
-					exceptions: [],
+					exceptions: parsingExceptions.copy(),
 					calledFunction: func,
 					succeeded: true,
 					returnValue: functionField
@@ -503,7 +512,7 @@ class SScript
 	{
 		if (scriptX != null)
 		{
-			scriptX.interpEX.variables.clear();
+			scriptX.interpEX.variables = new Map();
 			return this;
 		}
 
@@ -529,11 +538,14 @@ class SScript
 		if (scriptX != null)
 		{
 			if (scriptX.currentScriptClass != null
+				&& scriptX.currentScriptClass.listFunctions() != null
 				&& scriptX.currentScriptClass.listFunctions().exists(key)
 				&& scriptX.currentScriptClass.listFunctions()[key] != null)
 				return true;
 
-			return if (scriptX.interpEX.locals.exists(key)) true else scriptX.interpEX.variables.exists(key);
+			var l = scriptX.interpEX.locals;
+			var v = scriptX.interpEX.variables;
+			return if (l != null && l.exists(key)) true else if (v != null && v.exists(key)) true else false;
 		}
 
 		if (interp == null)
@@ -597,9 +609,14 @@ class SScript
 			}
 			catch (e)
 				try
-					scriptX = new SScriptX(string)
+				{
+					scriptX = new SScriptX(string);
+				}
 				catch (e)
+				{
+					parsingExceptions.push(new Exception(e.details()));
 					scriptX = null;
+				}
 		}
 
 		script = string;
@@ -661,5 +678,10 @@ class SScript
 	function get_currentClass():String
 	{
 		return if (scriptX != null) scriptX.currentClass else null;
+	}
+
+	function get_exMode():Bool 
+	{
+		return scriptX != null;
 	}
 }
