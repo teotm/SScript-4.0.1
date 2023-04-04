@@ -127,7 +127,7 @@ class SScript
 	**/
 	public var currentSuperClass(get, never):Class<Dynamic>;
 
-	@:noPrivateAccess var parsingExceptions(default, null):Array<Exception> = new Array();
+	var parsingExceptions(default, null):Array<Exception> = new Array();
 	@:noPrivateAccess var scriptX(default, null):SScriptX;
 
 	/**
