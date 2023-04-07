@@ -120,8 +120,8 @@ class SScript
 	**/
 	public var currentSuperClass(get, never):Class<Dynamic>;
 
-	var parsingExceptions(default, null):Array<Exception> = new Array();
-	var scriptX(default, null):SScriptX;
+	@:noPrivateAccess var parsingExceptions(default, null):Array<Exception> = new Array();
+	@:noPrivateAccess var scriptX(default, null):SScriptX;
 
 	/**
 		Creates a new haxe script that will be ready to use after executing.
@@ -469,6 +469,7 @@ class SScript
 				{
 					if (traces)
 						trace('Interpreter is null!');
+
 					pushException('Interpreter is null!');
 				}
 				else
@@ -560,8 +561,7 @@ class SScript
 		{
 			if (scriptX.currentScriptClass != null
 				&& scriptX.currentScriptClass.listFunctions() != null
-				&& scriptX.currentScriptClass.listFunctions().exists(key)
-				&& scriptX.currentScriptClass.listFunctions()[key] != null)
+				&& scriptX.currentScriptClass.listFunctions().exists(key))
 				return true;
 
 			var l = scriptX.interpEX.locals;

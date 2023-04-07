@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript", "haxescript"],
   "description": "An easy-to-use Haxe Script class for all static targets.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "classPath": "src/",
-  "releasenote": "Class support + a lot of rewritten functions",
+  "releasenote": "Fixed crashes + Ex Mode checking",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

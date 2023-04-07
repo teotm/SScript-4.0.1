@@ -58,7 +58,7 @@ var randomNumber:Float = script.call('returnRandom').returnValue;
 ```
 
 ## Using classes with SScript
-SScript has 2 modes: Ex and Normal. 
+SScript has 2 modes: **Ex** and **Normal**. 
 If SScript has been created with a class, it will automatically switch to Ex mode. Ex mode allows only 3 expressions: imports, package and classes. 
 
 So a script like this isn't valid in Ex mode:
@@ -101,6 +101,7 @@ class Main
 	static function main()
 	{
 		var script:SScript = new SScript("script.hx");
+		// trace(scriptX.exMode); // You can check if script succesfully switched to Ex mode.
 		var c = script.call('overrideThis', 'Child'); // You need to specify the Child class, if it isn't specified SScript will call the function from ParentClass
 		trace(c);
 	}
