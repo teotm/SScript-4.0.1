@@ -6,7 +6,7 @@
   "description": "An easy-to-use Haxe Script class for all targets.",
   "version": "3.0.0",
   "classPath": "src/",
-  "releasenote": "Nonstatic targets + OpenFL Support",
+  "releasenote": "Nonstatic targets + OpenFL + Preprocessing Support",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }
