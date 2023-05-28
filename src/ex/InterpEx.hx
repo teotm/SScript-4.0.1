@@ -3,21 +3,22 @@ package ex;
 import hscriptBase.Expr;
 import hscriptBase.*;
 
+import tea.backend.SScriptX;
+
 @:access(ex.ScriptClass)
 @:access(ex.AbstractScriptClass)
-@:access(SScriptX)
+@:access(tea.backend.SScriptX)
 class InterpEx extends hscriptBase.Interp
 {
 	var pkg(default, null):String;
 
 	@:noPrivateAccess private static var interps:Array<InterpEx> = [];
-
 	private var _proxy:AbstractScriptClass = null;
 	var origin:String = "SScriptX";
 
 	var changedClasses:Map<String, Array<String>> = new Map();
 
-	public function new(proxy:AbstractScriptClass = null, ?push = true)
+	public function new(proxy:AbstractScriptClass = null, ?push:Bool = true, ?superClassInstances:Map<String, Dynamic>)
 	{
 		super();
 		_proxy = proxy;

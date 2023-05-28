@@ -23,6 +23,7 @@ package hscriptBase;
 import haxe.PosInfos;
 import hscriptBase.Expr;
 import haxe.Constraints;
+import tea.SScript;
 
 private enum Stop {
 	SBreak;
@@ -30,7 +31,7 @@ private enum Stop {
 	SReturn;
 }
 
-@:access(SScript)
+@:access(tea.SScript)
 class Interp {
 
 	#if haxe3

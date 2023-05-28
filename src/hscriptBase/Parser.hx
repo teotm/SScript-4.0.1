@@ -24,6 +24,7 @@ import haxe.macro.Compiler;
 import haxe.macro.Context;
 import haxe.Exception;
 import hscriptBase.Expr;
+import tea.SScript;
 using StringTools;
 
 enum Token {
@@ -47,7 +48,7 @@ enum Token {
 	TPrepro( s : String );
 }
 
-@:allow(SScript)
+@:access(tea.SScript)
 class Parser {
 
 	// config / variables
@@ -62,14 +63,9 @@ class Parser {
 	public var opRightAssoc : Hash<Bool>;
 	#end
 
-	public var script:SScript;
+	public var script:tea.SScript;
 
 	@:noPrivateAccess var packaged : Bool;
-
-	/**
-		allows to check for #if / #else in code
-	**/
-	public var preprocesorValues : Map<String,Dynamic> = new Map();
 
 	/**
 		activate JSON compatiblity
@@ -2041,10 +2037,6 @@ class Parser {
 		return null;
 	}
 
-	function preprocValue( id : String ) : Dynamic {
-		return preprocesorValues.get(id);
-	}
-
 	var preprocStack : Array<{ r : Bool }>;
 
 	function parsePreproCond() {
@@ -2062,14 +2054,136 @@ class Parser {
 		}
 	}
 
-	function evalPreproCond( e : Expr ) {
-		switch( expr(e) ) {
-		case EIdent(id):
-			return true;
+	function evalPreproCond( e : Expr ) : Bool {
+		function evalBinop(eexpr:ExprDef):Bool
+		{
+			switch eexpr{
+				case EBinop(v,e1,e2):
+					var id1:String=null,id2:String=null;
+					switch Tools.expr(e1){
+						case EIdent(e,_):
+							id1=e;
+						case EConst(c):
+							switch c {
+								case CString(s,_):
+									id1=s;
+								case CInt(v):
+									id1=Std.string(v);
+								case CFloat(f):
+									id1=Std.string(f);
+								case _:
+							}
+						case _:
+					}
+					switch Tools.expr(e2){
+						case EIdent(e,_):
+							id2=e;
+						case EConst(c):
+							switch c {
+								case CString(s,_):
+									id2=s;
+								case CInt(v):
+									id2=Std.string(v);
+								case CFloat(f):
+									id2=Std.string(f);
+								case _:
+							}
+						case _:
+					}
+					if( id1!=null )
+					{
+						var definedValue:String = SScript.defines[id1];
+						if(definedValue==null)
+							definedValue=id1;
+						if (definedValue!=null
+							&&id2!=null
+							&&(definedValue.contains('.') || definedValue.contains('-'))
+							&&(id2.contains('.') || id2.contains('-')))
+						{
+							definedValue = definedValue.split('.').join('');
+							definedValue = definedValue.split('-').join('');
+							id2 = id2.split('.').join('');
+							id2 = id2.split('-').join('');
+
+							if(definedValue.length!=id2.length)
+							{
+								if(id2.length<definedValue.length)
+									while(id2.length<definedValue.length)
+										id2+='0';
+								else 
+									while(definedValue.length<id2.length)
+										id2+='0';
+							}
+						}
+						if(definedValue!=null)
+						{
+							var float2:Null<Float>=Std.parseFloat(definedValue),float3:Null<Float>=Std.parseFloat(id2);
+							var int2:Null<Int>=Std.parseInt(definedValue),int3:Null<Int>=Std.parseInt(id2);
+							switch v{
+								case '==':
+									if ( id2==definedValue )
+										return true;
+									else if ( float2!=null&&float3!=null&&float2==float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2==int3 )
+										return true;
+								case '!=':
+									if ( id2!=definedValue )
+										return true;
+									else if ( float2!=null&&float3!=null&&float2!=float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2!=int3 )
+										return true;
+								case '>=':
+									if ( float2!=null&&float3!=null&&float2>=float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2>=int3 )
+										return true;
+								case '<=':
+									if ( float2!=null&&float3!=null&&float2<=float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2<=int3 )
+										return true;
+								case '<':
+									if ( float2!=null&&float3!=null&&float2<float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2<int3 )
+										return true;
+								case '>':
+									if ( float2!=null&&float3!=null&&float2>float3 )
+										return true;
+									else if ( int2!=null&&int3!=null&&int2>int3 )
+										return true;
+									
+							}
+						}
+					}
+				case _:
+			}
+
+			return false;
+		}
+
+		var expr1 = expr(e);
+		switch( expr1 ) {
+		case EIdent(id,_):
+			return SScript.defines.exists(id);
 		case EUnop("!", _, e):
 			return !!!evalPreproCond(e);
 		case EParent(e):
 			return evalPreproCond(e);
+		case EBinop("==", e1, e2):
+			return evalBinop(expr1);
+		case EBinop(">=", e1, e2):
+			return evalBinop(expr1);
+		case EBinop("<=", e1, e2):
+			return evalBinop(expr1);
+		case EBinop("<", e1, e2):
+			return evalBinop(expr1);
+		case EBinop(">", e1, e2):
+			return evalBinop(expr1);
+		case EBinop("!=", e1, e2):
+			return evalBinop(expr1);
 		case EBinop("&&", e1, e2):
 			return evalPreproCond(e1) && evalPreproCond(e2);
 		case EBinop("||", e1, e2):
@@ -2080,16 +2194,26 @@ class Parser {
 		}
 	}
 
+	var poppedStack:Array<{r:Bool}> = [];
 	function preprocess( id : String ) : Token {
+		function containsTrue():Bool
+		{
+			for( i in poppedStack )
+				if( i.r ) return true;
+
+			return false;
+		}
 		switch( id ) {
 		case "if":
 			var e = parsePreproCond();
 			if( evalPreproCond(e) ) {
 				preprocStack.push({ r : true });
+				poppedStack.push({ r : true });
 				var t = token();
 				return t;
 			}
 			preprocStack.push({ r : false });
+			poppedStack.push({ r : false });
 			skipTokens();
 			return token();
 		case "else", "elseif" if( preprocStack.length > 0 ):
@@ -2097,21 +2221,29 @@ class Parser {
 				preprocStack[preprocStack.length - 1].r = false;
 				skipTokens();
 				return token();
-			} else if( id == "else" ) {
-				preprocStack.pop();
-				preprocStack.push({ r : true });
+			} else if( id == "else") {
+				if(!containsTrue())
+				{
+					poppedStack.push(preprocStack.pop());
+					preprocStack.push({ r : true });
+				}
 				return token();
 			} else {
 				// elseif
 				preprocStack.pop();
-				return preprocess("if");
+				var t = preprocess("if");
+				return t;
 			}
 		case "end" if( preprocStack.length > 0 ):
+			while(poppedStack.length>0)
+				poppedStack.pop();
+
 			preprocStack.pop();
 			var t = token();
 			return t;
 		default:
-			return TPrepro(id);
+			error(ECustom('Unexpected $id'));
+			return null;
 		}
 	}
 
