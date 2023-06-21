@@ -3,6 +3,7 @@ package tea;
 import ex.*;
 
 import haxe.Exception;
+import haxe.Timer;
 
 import hscriptBase.*;
 import hscriptBase.Expr;
@@ -45,11 +46,6 @@ typedef SCall =
 @:access(AbstractScriptClass)
 class SScript
 {
-	/**
-		Use this to access to interpreter's variables!
-	**/
-	public var variables(get, never):Map<String, Dynamic>;
-
 	#if openflPos
 	/**
 	    `WARNING`: For `openfl` targets, you need to clear this map before switching states otherwise this map
@@ -88,10 +84,30 @@ class SScript
 	#end
 	public static var superClassInstances(default, null):Map<String, Dynamic> = [];
 
+	
 	/**
 		Every created SScript will be mapped to this map. 
 	**/
 	public static var global(default, null):Map<String, SScript> = [];
+
+	static var BlankReg(get, never):EReg;
+
+	/**
+		Reports how many seconds it took to execute this script. 
+
+		It will be -1 if failed to execute.
+	**/
+	public var lastReportedTime(default, null):Float = 0;
+
+	/**
+		Used in `set`. If a class is set in this script while being in this array, an exception will be thrown.
+	**/
+	public var notAllowedClasses(default, null):Array<Class<Dynamic>> = [];
+
+	/**
+		Use this to access to interpreter's variables!
+	**/
+	public var variables(get, never):Map<String, Dynamic>;
 
 	/**
 		Main interpreter and executer. 
@@ -177,6 +193,8 @@ class SScript
 	**/
 	public function new(?scriptPath:String = "", ?preset:Bool = true)
 	{
+		var time = Timer.stamp();
+
 		#if sys
 		if (defines == null)
 		{
@@ -245,7 +263,15 @@ class SScript
 		if (preset)
 			this.preset();
 
-		doFile(scriptPath);
+		try 
+		{
+			doFile(scriptPath);
+			lastReportedTime = Timer.stamp() - time;
+		}
+		catch (e)
+		{
+			lastReportedTime = -1;
+		}
 	}
 
 	/**
@@ -261,7 +287,7 @@ class SScript
 		if (interp == null || !active)
 			return;
 
-		if (scriptX == null && script != null && script.length > 0)
+		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script, if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScript");
 			interp.execute(expr);
@@ -278,6 +304,9 @@ class SScript
 	**/
 	public function set(key:String, obj:Dynamic):SScript
 	{
+		if ((obj is Class) && notAllowedClasses.contains(obj))
+			throw 'Tried to set ${Type.getClassName(obj)} which is not allowed.';
+
 		function setVar(key:String, obj:Dynamic):Void
 		{
 			if (Tools.keys.contains(key))
@@ -687,8 +716,11 @@ class SScript
 		#end
 	}
 
-	function doFile(scriptPath:String)
+	function doFile(scriptPath:String):Void
 	{
+		if (scriptPath == null || scriptPath.length < 1 || BlankReg.match(scriptPath))
+			return;
+
 		if (scriptPath != null && scriptPath.length > 0)
 			try
 				scriptX = new SScriptX(scriptPath, this)
@@ -761,66 +793,74 @@ class SScript
 
 		This does not change your `scriptFile` but it changes `script`.
 
-		This function should be avoided whenever possible, when you do a string a lot variables remain unchanged.
+		Even though this function is faster,
+		it should be avoided whenever possible.
 		Always try to use a script file.
 		@param string String you want to execute.
 		@return Returns this instance for chaining. Will return `null` if failed.
 	**/
 	public function doString(string:String):SScript
 	{
-		var og:String = "SScript";
-		if (string == null || string.length < 1)
-			return this;
-		#if sys
-        else #if openflPos if ((try Assets.exists(string) catch (e) false) || FileSystem.exists(string)) #else if (FileSystem.exists(string)) #end
+		var time = Timer.stamp();
+		try 
 		{
-			og = "" + string;
-			scriptFile = string;
-			string = File.getContent(string);
-		}
-		#elseif openflPos
-		if (try Assets.exists(string) catch (e) false)
-		{
-			og = "" + string;
-			scriptFile = string;
-			string = try Assets.getText(string) catch (e) string;
-		}
-		#end
-		if (scriptX != null)
-		{
-			if (!global.exists(string))
-				global[string] = this;
-
-			scriptX.doString(string, og);
-			return this;
-		}
-		if (!active || interp == null)
-			return null;
-
-		if (scriptX == null)
-		{
-			try
+			var og:String = "SScript";
+			if (string == null || string.length < 1 || BlankReg.match(string))
+				return this;
+			#if sys
+			else #if openflPos if ((try Assets.exists(string) catch (e) false) || FileSystem.exists(string)) #else if (FileSystem.exists(string)) #end
 			{
-				var expr:Expr = parser.parseString(string, og);
-				interp.execute(expr);
-				script = string;
+				og = "" + string;
+				scriptFile = string;
+				string = File.getContent(string);
 			}
-			catch (e)
+			#elseif openflPos
+			if (try Assets.exists(string) catch (e) false)
 			{
-				script = "";
+				og = "" + string;
+				scriptFile = string;
+				string = try Assets.getText(string) catch (e) string;
+			}
+			#end
+			if (scriptX != null)
+			{
+				if (!global.exists(string))
+					global[string] = this;
 
+				scriptX.doString(string, og);
+				return this;
+			}
+			if (!active || interp == null)
+				return null;
+
+			if (scriptX == null)
+			{
 				try
-					scriptX = new SScriptX(string, this)
+				{
+					var expr:Expr = parser.parseString(string, og);
+					interp.execute(expr);
+					script = string;
+				}
 				catch (e)
 				{
-					parsingExceptions.push(new Exception(e.details()));
-					scriptX = null;
+					script = "";
+
+					try
+						scriptX = new SScriptX(string, this)
+					catch (e)
+					{
+						parsingExceptions.push(new Exception(e.details()));
+						scriptX = null;
+					}
 				}
 			}
-		}
 
-		if (!global.exists(script) && script != null && script.length > 0)
-			global[script] = this;
+			if (!global.exists(script) && script != null && script.length > 0)
+				global[script] = this;
+
+			lastReportedTime = Timer.stamp() - time;
+		}
+		catch (e) lastReportedTime = -1;
 
 		return this;
 	}
@@ -981,5 +1021,10 @@ class SScript
 	function get_exMode():Bool 
 	{
 		return scriptX != null;
+	}
+
+	static function get_BlankReg():EReg 
+	{
+		return ~/^[\n\r\t]$/;
 	}
 }

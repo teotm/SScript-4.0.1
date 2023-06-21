@@ -2,11 +2,11 @@
   "name": "SScript",
   "url": "https://github.com/TheWorldMachinima/SScript",
   "license": "Apache",
-  "tags": ["hscript", "sscript", "haxescript"],
+  "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "classPath": "src/",
-  "releasenote": "Nonstatic targets + OpenFL + Preprocessing Support",
+  "releasenote": "Improvements and bug fixes",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }
