@@ -305,8 +305,6 @@ class SScript
 				"SScript";
 		} #else null #end;
 
-		trace(origin);
-
 		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
