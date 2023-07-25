@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "classPath": "src/",
-  "releasenote": "Improvements and bug fixes",
+  "releasenote": "Bug fixes + custom origin support",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

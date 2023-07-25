@@ -91,11 +91,20 @@ class SScript
 	public static var global(default, null):Map<String, SScript> = [];
 
 	static var BlankReg(get, never):EReg;
+	
+	#if hscriptPos
+	/**
+		This is a custom origin you can set.
+
+		If not null, this will act as file path.
+	**/
+	public var customOrigin(default, set):String;
+	#end
 
 	/**
 		Reports how many seconds it took to execute this script. 
 
-		It will be -1 if failed to execute.
+		It will be -1 if it failed to execute.
 	**/
 	public var lastReportedTime(default, null):Float = 0;
 
@@ -287,9 +296,20 @@ class SScript
 		if (interp == null || !active)
 			return;
 
+		var origin:String = #if hscriptPos {
+			if (customOrigin != null && customOrigin.length > 0)
+				customOrigin;
+			else if (scriptFile != null && scriptFile.length > 0)
+				scriptFile;
+			else 
+				"SScript";
+		} #else null #end;
+
+		trace(origin);
+
 		if (script != null && script.length > 0)
 		{
-			var expr:Expr = parser.parseString(script, if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScript");
+			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
 			interp.execute(expr);
 		}
 	}
@@ -797,27 +817,38 @@ class SScript
 		it should be avoided whenever possible.
 		Always try to use a script file.
 		@param string String you want to execute.
+		@param origin Optional origin to use for this script, it will appear on traces.
 		@return Returns this instance for chaining. Will return `null` if failed.
 	**/
-	public function doString(string:String):SScript
+	public function doString(string:String #if hscriptPos , ?origin:String #end):SScript
 	{
 		var time = Timer.stamp();
 		try 
 		{
-			var og:String = "SScript";
+			#if hscriptPos
+			var og:String = origin;
+			if (og == null || og.length < 1)
+				og = customOrigin;
+			if (og == null || og.length < 1)
+				og = "SScript";
+			#end
 			if (string == null || string.length < 1 || BlankReg.match(string))
 				return this;
 			#if sys
 			else #if openflPos if ((try Assets.exists(string) catch (e) false) || FileSystem.exists(string)) #else if (FileSystem.exists(string)) #end
 			{
+				#if hscriptPos
 				og = "" + string;
+				#end
 				scriptFile = string;
 				string = File.getContent(string);
 			}
 			#elseif openflPos
 			if (try Assets.exists(string) catch (e) false)
 			{
+				#if hscriptPos
 				og = "" + string;
+				#end
 				scriptFile = string;
 				string = try Assets.getText(string) catch (e) string;
 			}
@@ -827,7 +858,7 @@ class SScript
 				if (!global.exists(string))
 					global[string] = this;
 
-				scriptX.doString(string, og);
+				scriptX.doString(string #if hscriptPos , og #end);
 				return this;
 			}
 			if (!active || interp == null)
@@ -837,19 +868,19 @@ class SScript
 			{
 				try
 				{
-					var expr:Expr = parser.parseString(string, og);
+					var expr:Expr = parser.parseString(string #if hscriptPos , og #end);
 					interp.execute(expr);
 					script = string;
 				}
 				catch (e)
 				{
 					script = "";
+					parsingExceptions.push(new Exception(e.details()));
 
 					try
 						scriptX = new SScriptX(string, this)
 					catch (e)
 					{
-						parsingExceptions.push(new Exception(e.details()));
 						scriptX = null;
 					}
 				}
@@ -1027,4 +1058,12 @@ class SScript
 	{
 		return ~/^[\n\r\t]$/;
 	}
+
+	#if hscriptPos
+	function set_customOrigin(value:String):String
+	{
+		@:privateAccess parser.origin = value;
+		return customOrigin = value;
+	}
+	#end
 }
