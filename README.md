@@ -1,3 +1,6 @@
+
+![SScriptLogo](https://github.com/TheWorldMachinima/SScript/assets/114953508/01fba6f6-caeb-4aa7-af4e-58b9d98984fc)
+
 # SScript
 
 SScript is an easy to use Haxe script parser and interpreter, including class support and more. It aims to support all of the Haxe structures while being fast and easy to use.
