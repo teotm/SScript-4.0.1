@@ -1200,7 +1200,7 @@ class SScript
 	function get_exMode():Bool 
 	{
 		if (_destroyed)
-			return null;
+			return false;
 	
 		return scriptX != null;
 	}
