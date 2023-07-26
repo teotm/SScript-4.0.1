@@ -125,6 +125,13 @@ class Tools {
 	}
 
 	public static function compatibleWithEachOther(v,v2):Bool{
+		var c = Type.resolveClass(v), c1 = Type.resolveClass(v2);
+		if (c!=null&&c1!=null)
+		{
+			var superC = Type.getSuperClass(c);
+			if (superC!=null&&c1 == superC)
+				return true;
+		}
 		var chance:Bool = v=="Float"&&v2=="Int";
 		var secondChance:Bool = v=="Dynamic"||v2=="null";
 		return chance||secondChance;

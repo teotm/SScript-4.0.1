@@ -127,7 +127,7 @@ enum Error {
 	EInvalidIterator( v : String );
 	EInvalidOp( op : String );
 	EInvalidAccess( f : String );
-	EUnmatcingType( v : String , t : String );
+	EUnmatchingType( v : String , t : String , ?varn : String );
 	ECustom( msg : String );
 	EInvalidFinal( ?v : String );
 	EUnexistingField( f : Dynamic , f2 : Dynamic );

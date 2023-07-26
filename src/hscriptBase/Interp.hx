@@ -174,7 +174,7 @@ class Interp {
 	function setVar( name : String, v : Dynamic ) {
 		var ftype:String = Tools.getType(variables.get(name));
 		var stype:String = Tools.getType(v);
-		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, name));
 		variables.set(name, v);
 	}
 
@@ -199,7 +199,7 @@ class Interp {
 				{
 					var ftype:String = Tools.ctToType(l.t);
 					var stype:String = Tools.getType(v);
-					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, id));
 				}
 				if(Type.typeof(l.r)==TFunction&&l.dynamicFunc!=null&&!l.dynamicFunc)
 					error(EFunctionAssign(id));
@@ -435,7 +435,7 @@ class Interp {
 			{
 				var ftype:String = Tools.ctToType(t);
 				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatcingType(ftype, stype));}
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatchingType(ftype, stype, n));}
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
@@ -458,7 +458,7 @@ class Interp {
 			{
 				var ftype:String = Tools.ctToType(t);
 				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatcingType(ftype, stype));
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, n));
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });

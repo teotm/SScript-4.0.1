@@ -84,6 +84,18 @@ class SScript
 	#end
 	public static var superClassInstances(default, null):Map<String, Dynamic> = [];
 
+	#if openflPos
+	/**
+		Variables in this map will be set to every SScript instance. 
+
+		You need to clear this map at every state switch to avoid memory leaks!
+	**/
+	#else
+	/**
+		Variables in this map will be set to every SScript instance. 
+	**/
+	#end
+	public static var globalVariables:Map<String, Dynamic> = [];
 	
 	/**
 		Every created SScript will be mapped to this map. 
@@ -106,7 +118,14 @@ class SScript
 
 		It will be -1 if it failed to execute.
 	**/
-	public var lastReportedTime(default, null):Float = 0;
+	public var lastReportedTime(default, null):Float = -1;
+
+	/**
+		Report how many seconds it took to call the latest function in this script.
+
+		It will be -1 if it failed to execute.
+	**/
+	public var lastReportedCallTime(default, null):Float = -1;
 
 	/**
 		Used in `set`. If a class is set in this script while being in this array, an exception will be thrown.
@@ -154,6 +173,11 @@ class SScript
 	public var traces:Bool;
 
 	/**
+		If true, enables some traces from `doString` and `new()`.
+	**/
+	public var debugTraces:Bool;
+
+	/**
 		Tells if this script is in EX mode, in EX mode you can only use `class`, `import` and `package`.
 	**/
 	public var exMode(get, never):Bool;
@@ -193,6 +217,7 @@ class SScript
 
 	@:noPrivateAccess var parsingExceptions(default, null):Array<Exception> = new Array();
 	@:noPrivateAccess var scriptX(default, null):SScriptX;
+	@:noPrivateAccess var _destroyed(default, null):Bool;
 
 	/**
 		Creates a new SScript instance.
@@ -272,10 +297,22 @@ class SScript
 		if (preset)
 			this.preset();
 
+		for (i => k in globalVariables)
+			if (i != null)
+				set(i, k);
+
 		try 
 		{
 			doFile(scriptPath);
+			if (debugTraces)
+			{
+				if (lastReportedTime == 0)
+					trace('SScript instance created instantly (0s)');
+				else 
+					trace('SScript instance created in ${lastReportedTime}s');
+			}
 			lastReportedTime = Timer.stamp() - time;
+
 		}
 		catch (e)
 		{
@@ -290,6 +327,9 @@ class SScript
 	**/
 	public function execute():Void
 	{
+		if (_destroyed)
+			return;
+
 		if (scriptX != null)
 			return;
 
@@ -322,6 +362,9 @@ class SScript
 	**/
 	public function set(key:String, obj:Dynamic):SScript
 	{
+		if (_destroyed)
+			return null;
+
 		if ((obj is Class) && notAllowedClasses.contains(obj))
 			throw 'Tried to set ${Type.getClassName(obj)} which is not allowed.';
 
@@ -367,6 +410,9 @@ class SScript
 	**/
 	public function setClass(cl:Class<Dynamic>):SScript
 	{
+		if (_destroyed)
+			return null;
+		
 		if (cl == null)
 		{
 			if (traces)
@@ -398,6 +444,9 @@ class SScript
 	**/
 	public function setClassString(cl:String):SScript
 	{
+		if (_destroyed)
+			return null;
+
 		if (cl == null || cl.length < 1)
 		{
 			if (traces)
@@ -426,6 +475,9 @@ class SScript
 	**/
 	public function locals():Map<String, Dynamic>
 	{
+		if (_destroyed)
+			return null;
+
 		if (scriptX != null)
 		{
 			var newMap:Map<String, Dynamic> = new Map();
@@ -458,6 +510,9 @@ class SScript
 	**/
 	public function unset(key:String):SScript
 	{
+		if (_destroyed)
+			return null;
+
 		if (scriptX != null)
 		{
 			scriptX.interpEX.variables.remove(key);
@@ -490,6 +545,9 @@ class SScript
 	**/
 	public function get(key:String):Dynamic
 	{
+		if (_destroyed)
+			return null;
+
 		if (scriptX != null)
 		{
 			return
@@ -548,6 +606,11 @@ class SScript
 	**/
 	public function call(func:String, ?args:Array<Dynamic>, ?className:String):SCall
 	{
+		if (_destroyed)
+			return null;
+
+		var time:Float = Timer.stamp();
+
 		var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
 		var caller:SCall = {
 			exceptions: [],
@@ -645,8 +708,11 @@ class SScript
 				}
 			}
 		}
+		lastReportedCallTime = Timer.stamp() - time;
+
 		if (!caller.succeeded && (callX == null || !callX.succeeded))
 		{
+			lastReportedCallTime = -1;
 			for (i in parsingExceptions)
 			{
 				pushException(i.details());
@@ -666,6 +732,9 @@ class SScript
 	**/
 	public function clear():SScript
 	{
+		if (_destroyed)
+			return null;
+
 		if (scriptX != null)
 		{
 			scriptX.interpEX.variables = new Map();
@@ -691,6 +760,9 @@ class SScript
 	**/
 	public function exists(key:String):Bool
 	{
+		if (_destroyed)
+			return false;
+
 		if (scriptX != null)
 		{
 			if (scriptX.currentScriptClass != null
@@ -717,25 +789,34 @@ class SScript
 	**/
 	public function preset():Void
 	{
-		setClass(Math);
-		setClass(Std);
-		setClass(StringTools);
+		if (_destroyed)
+			return;
+
 		setClass(Date);
 		setClass(DateTools);
+		setClass(Math);
+		setClass(Std);
+		setClass(SScript);
+		setClass(StringTools);
 
 		#if sys
 		setClass(File);
 		setClass(FileSystem);
 		setClass(Sys);
 		#end
-
+		
 		#if openflPos
 		setClass(Assets);
 		#end
+
+		set('this', this);
 	}
 
 	function doFile(scriptPath:String):Void
 	{
+		if (_destroyed)
+			return;
+
 		if (scriptPath == null || scriptPath.length < 1 || BlankReg.match(scriptPath))
 			return;
 
@@ -792,8 +873,6 @@ class SScript
 				#end
 			#end
 
-			execute();
-
 			if (scriptX != null)
 			{
 				if (scriptX.scriptFile != null && scriptX.scriptFile.length > 0)
@@ -803,6 +882,8 @@ class SScript
 				global[scriptFile] = this;
 			else if (script != null && script.length > 0)
 				global[script] = this;
+
+			execute();
 		}
 	}
 
@@ -820,6 +901,9 @@ class SScript
 	**/
 	public function doString(string:String #if hscriptPos , ?origin:String #end):SScript
 	{
+		if (_destroyed)
+			return null;
+
 		var time = Timer.stamp();
 		try 
 		{
@@ -853,8 +937,7 @@ class SScript
 			#end
 			if (scriptX != null)
 			{
-				if (!global.exists(string))
-					global[string] = this;
+				global[string] = this;
 
 				scriptX.doString(string #if hscriptPos , og #end);
 				return this;
@@ -865,7 +948,10 @@ class SScript
 			if (scriptX == null)
 			{
 				try
-				{
+				{	
+					if (string != null && string.length > 0)
+						global[string] = this;
+
 					var expr:Expr = parser.parseString(string #if hscriptPos , og #end);
 					interp.execute(expr);
 					script = string;
@@ -884,10 +970,15 @@ class SScript
 				}
 			}
 
-			if (!global.exists(script) && script != null && script.length > 0)
-				global[script] = this;
-
 			lastReportedTime = Timer.stamp() - time;
+
+			if (debugTraces)
+			{
+				if (lastReportedTime == 0)
+					trace('SScript instance created instantly (0s)');
+				else 
+					trace('SScript instance created in ${lastReportedTime}s');
+			}
 		}
 		catch (e) lastReportedTime = -1;
 
@@ -896,10 +987,13 @@ class SScript
 
 	inline function toString():String
 	{
+		if (_destroyed)
+			return "null";
+
 		if (scriptFile != null && scriptFile.length > 0)
 			return scriptFile;
 
-		return "[object Object]";
+		return scriptX != null ? "[SScriptX SScriptX]" : "[SScript SScript]";
 	}
 
 	#if (sys || openflPos)
@@ -999,23 +1093,67 @@ class SScript
 		return list;
 	}
 
+	/**
+		This function makes this script **COMPLETELY** unusable and unrestorable.
+
+		If you don't want to destroy your script just yet, just set `active` to false!
+	**/
+	public function destroy():Void
+	{
+		if (global.exists(script))
+			global.remove(script);
+		if (global.exists(scriptFile))
+			global.remove(scriptFile);
+		
+		for (i => k in interp.variables)
+			if (SScriptX.variables.exists(i))
+				SScriptX.variables.remove(i);
+
+		interp.variables.clear();
+		if (scriptX != null)
+			scriptX.interpEX.variables.clear();
+
+		parser = null;
+		interp = null;
+		scriptX = null;
+		script = null;
+		scriptFile = null;
+		active = false;
+		notAllowedClasses = null;
+		lastReportedCallTime = -1;
+		lastReportedTime = -1;
+		_destroyed = true;
+	}
+
 	function get_variables():Map<String, Dynamic>
 	{
+		if (_destroyed)
+			return null;
+
 		return if (scriptX != null) scriptX.interpEX.variables else interp.variables;
 	}
 
 	function setPackagePath(p):String
 	{
+		if (_destroyed)
+			return null;
+
 		return packagePath = p;
 	}
 
 	function get_packagePath():String
 	{
+		if (_destroyed)
+			return null;
+
 		return if (scriptX != null) scriptX.interpEX.pkg else packagePath;
 	}
 
 	function get_classes():Map<String, AbstractScriptClass>
 	{
+		if (_destroyed)
+			return null;
+
 		return if (scriptX != null)
 		{
 			var newMap:Map<String, AbstractScriptClass> = new Map();
@@ -1029,26 +1167,41 @@ class SScript
 
 	function get_currentScriptClass():AbstractScriptClass
 	{
+		if (_destroyed)
+			return null;
+
 		return if (scriptX != null) scriptX.currentScriptClass else null;
 	}
 
 	function get_currentSuperClass():Class<Dynamic>
 	{
+		if (_destroyed)
+			return null;
+		
 		return if (scriptX != null) scriptX.currentSuperClass else null;
 	}
 
 	function set_currentClass(value:String):String
 	{
+		if (_destroyed)
+			return null;
+		
 		return if (scriptX != null) scriptX.currentClass = value else null;
 	}
 
 	function get_currentClass():String
 	{
+		if (_destroyed)
+			return null;
+		
 		return if (scriptX != null) scriptX.currentClass else null;
 	}
 
 	function get_exMode():Bool 
 	{
+		if (_destroyed)
+			return null;
+	
 		return scriptX != null;
 	}
 
@@ -1060,6 +1213,9 @@ class SScript
 	#if hscriptPos
 	function set_customOrigin(value:String):String
 	{
+		if (_destroyed)
+			return null;
+		
 		@:privateAccess parser.origin = value;
 		return customOrigin = value;
 	}

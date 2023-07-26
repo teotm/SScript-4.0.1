@@ -343,7 +343,7 @@ class Printer {
 			case EInvalidAccess(f): "Invalid access to field " + f;
 			case ECustom(msg): msg;
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
-			case EUnmatcingType(v,t): t + " should be " + v + ".";
+			case EUnmatchingType(v,t,n): t + " should be " + v + "" + if(n != null) ' for variable "$n".' else ".";
 			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
 			case EUnknownIdentifier(v): "Unknown identifier: "  + v + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
