@@ -52,7 +52,7 @@ enum Token {
 class Parser {
 
 	// config / variables
-	public var line : Int;
+	public var line : Int = 0;
 	public var opChars : String;
 	public var identChars : String;
 	#if haxe3
@@ -65,12 +65,12 @@ class Parser {
 
 	public var script:tea.SScript;
 
-	@:noPrivateAccess var packaged : Bool;
+	@:noPrivateAccess var packaged : Bool = false;
 
 	/**
 		activate JSON compatiblity
 	**/
-	public var allowJSON : Bool;
+	public var allowJSON : Bool = false;
 
 	/**
 		allow types declarations
@@ -80,14 +80,14 @@ class Parser {
 	/**
 		allow haxe metadata declarations
 	**/
-	public var allowMetadata : Bool;
+	public var allowMetadata : Bool = false;
 
 	/**
 		resume from parsing errors (when parsing incomplete code, during completion for example)
 	**/
-	public var resumeErrors : Bool;
+	public var resumeErrors : Bool = false;
 
-	var interp :Interp;
+	var interp : Interp;
 
 	inline function setIntrp(interp) 
 		return this.interp = interp;

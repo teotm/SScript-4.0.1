@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "3.0.3",
+  "version": "4.0.0",
   "classPath": "src/",
-  "releasenote": "Global variables support, better error handling, more debug variables, bug fixes",
+  "releasenote": "More customizibility + Type checker completely fixed",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

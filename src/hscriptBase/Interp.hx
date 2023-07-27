@@ -50,6 +50,8 @@ class Interp {
 	var declared : Array<{ n : String, old : { r : Dynamic , ?isFinal : Bool , ?isInline : Bool , ?t:CType, ?dynamicFunc : Bool } }>;
 	var returnValue : Dynamic;
 
+	var typecheck : Bool = false;
+
 	var parser : Parser;
 	var script : SScript;
 
@@ -174,7 +176,11 @@ class Interp {
 	function setVar( name : String, v : Dynamic ) {
 		var ftype:String = Tools.getType(variables.get(name));
 		var stype:String = Tools.getType(v);
-		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, name));
+		var cl=variables.get(ftype);
+		var clN=Tools.getType(v,true);
+
+		if(typecheck)
+		if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'&&!Tools.compatibleWithEachOtherObjects(cl,clN))error(EUnmatchingType(ftype, stype, name));
 		variables.set(name, v);
 	}
 
@@ -199,7 +205,11 @@ class Interp {
 				{
 					var ftype:String = Tools.ctToType(l.t);
 					var stype:String = Tools.getType(v);
-					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, id));
+					var cl=variables.get(ftype);
+					
+					var clN=Tools.getType(v,true);
+					if(typecheck)
+					if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'&&!Tools.compatibleWithEachOtherObjects(cl,clN))error(EUnmatchingType(ftype, stype, id));
 				}
 				if(Type.typeof(l.r)==TFunction&&l.dynamicFunc!=null&&!l.dynamicFunc)
 					error(EFunctionAssign(id));
@@ -433,9 +443,14 @@ class Interp {
 			}
 			if(t!=null&&e!=null)
 			{
+				var e = expr(e);
 				var ftype:String = Tools.ctToType(t);
-				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'){error(EUnmatchingType(ftype, stype, n));}
+				var stype:String = Tools.getType(e);
+				var cl=variables.get(ftype);
+				var clN=Tools.getType(e,true);
+
+				if(typecheck)
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'&&!Tools.compatibleWithEachOtherObjects(cl,clN)){error(EUnmatchingType(ftype, stype, n));}
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });
@@ -456,9 +471,14 @@ class Interp {
 			}
 			if(t!=null&&e!=null)
 			{
+				var e = expr(e);
 				var ftype:String = Tools.ctToType(t);
-				var stype:String = Tools.getType(e==null?null:expr(e));
-				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon')error(EUnmatchingType(ftype, stype, n));
+				var stype:String = Tools.getType(e);
+				var cl=variables.get(ftype);
+				var clN=Tools.getType(e,true);
+
+				if(typecheck)
+				if(!Tools.compatibleWithEachOther(ftype, stype)&&ftype!=stype&&ftype!='Anon'&&!Tools.compatibleWithEachOtherObjects(cl,clN))error(EUnmatchingType(ftype, stype, n));
 			}
 			if(!pf){
 			declared.push({ n : n, old : locals.get(n) });

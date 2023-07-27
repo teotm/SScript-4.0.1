@@ -132,12 +132,33 @@ class Tools {
 			if (superC!=null&&c1 == superC)
 				return true;
 		}
+		/*if (c!=null&&c1!=null)
+		{
+			var superC = Type.getSuperClass(c1);
+			if (superC!=null&&c == superC)
+				return true;
+		}*/
 		var chance:Bool = v=="Float"&&v2=="Int";
 		var secondChance:Bool = v=="Dynamic"||v2=="null";
 		return chance||secondChance;
 	}
 
-	public static function getType( v ) {
+	public static function compatibleWithEachOtherObjects(v,v2):Bool{
+		if(v!=null&&(v is Class)){
+			if (v2!=null)
+			{
+				var cl=Type.resolveClass(v2);
+				var superC = Type.getSuperClass(cl), superC2 = Type.getSuperClass(v);
+				if(superC!=null&&superC==v)
+					return true;
+				if(superC2!=null&&superC2==cl)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	public static function getType( v , ?fn = false) {
 		var getType:(s:Dynamic)->String = function(v){
 			return switch(Type.typeof(v)) {
 				case TNull: "null";
@@ -145,6 +166,7 @@ class Tools {
 				case TFloat: "Float";
 				case TBool: "Bool";  
 				case TClass(v): var name = Type.getClassName(v);
+				if(fn)return name;
 				if(name.contains('.'))
 				{
 					var split = name.split('.');

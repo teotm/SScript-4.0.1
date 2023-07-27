@@ -46,6 +46,16 @@ typedef SCall =
 @:access(AbstractScriptClass)
 class SScript
 {
+	/**
+		If not null, assigns all scripts to check or ignore type declarations.
+	**/
+	public static var defaultTypeCheck(default, set):Null<Bool> = true;
+
+	/**
+		If not null, switches EX mode support for all scripts.
+	**/
+	public static var defaultClassSupport(default, set):Null<Bool> = null;
+
 	#if openflPos
 	/**
 	    `WARNING`: For `openfl` targets, you need to clear this map before switching states otherwise this map
@@ -114,6 +124,16 @@ class SScript
 	#end
 
 	/**
+		Whether the type checker should be enabled.
+	**/
+	public var typeCheck:Bool = false;
+
+	/**
+		Whether EX mode support should be enabled.
+	**/
+	public var classSupport:Bool = false;
+
+	/**
 		Reports how many seconds it took to execute this script. 
 
 		It will be -1 if it failed to execute.
@@ -170,12 +190,12 @@ class SScript
 	/**
 		If true, enables error traces from the functions.
 	**/
-	public var traces:Bool;
+	public var traces:Bool = false;
 
 	/**
 		If true, enables some traces from `doString` and `new()`.
 	**/
-	public var debugTraces:Bool;
+	public var debugTraces:Bool = false;
 
 	/**
 		Tells if this script is in EX mode, in EX mode you can only use `class`, `import` and `package`.
@@ -286,7 +306,13 @@ class SScript
 		#end
 		#end
 
+		if (defaultTypeCheck != null)
+			typeCheck = defaultTypeCheck;
+		if (defaultClassSupport != null)
+			classSupport = defaultClassSupport;
+
 		interp = new Interp();
+		interp.typecheck = typeCheck;
 		interp.setScr(this);
 
 		parser = new Parser();
@@ -365,17 +391,22 @@ class SScript
 		if (_destroyed)
 			return null;
 
-		if ((obj is Class) && notAllowedClasses.contains(obj))
+		if (obj != null && (obj is Class) && notAllowedClasses.contains(obj))
 			throw 'Tried to set ${Type.getClassName(obj)} which is not allowed.';
 
 		function setVar(key:String, obj:Dynamic):Void
 		{
+			if (key == null)
+				return;
+
 			if (Tools.keys.contains(key))
 				throw '$key is a keyword, set something else';
-			else if (macro.Macro.macroClasses.contains(obj))
+			else if (obj != null && macro.Macro.macroClasses.contains(obj))
 				throw '$key cannot be a Macro class (tried to set ${Type.getClassName(obj)})';
 
-			SScriptX.variables[key] = obj;
+			if (classSupport)
+				SScriptX.variables[key] = obj;
+
 			if (scriptX != null)
 			{
 				var value:Dynamic = obj;
@@ -820,14 +851,17 @@ class SScript
 		if (scriptPath == null || scriptPath.length < 1 || BlankReg.match(scriptPath))
 			return;
 
-		if (scriptPath != null && scriptPath.length > 0)
-			try
-				scriptX = new SScriptX(scriptPath, this)
-			catch (e)
-			{
-				parsingExceptions.push(new Exception(e.details()));
-				scriptX = null;
-			}
+		if (classSupport)
+		{
+			if (scriptPath != null && scriptPath.length > 0)
+				try
+					scriptX = new SScriptX(scriptPath, this)
+				catch (e)
+				{
+					parsingExceptions.push(new Exception(e.details()));
+					scriptX = null;
+				}
+		}
 		
 		if (scriptPath != null && scriptPath.length > 0)
 		{
@@ -909,6 +943,8 @@ class SScript
 		{
 			#if hscriptPos
 			var og:String = origin;
+			if (og != null && og.length > 0)
+				customOrigin = og;
 			if (og == null || og.length < 1)
 				og = customOrigin;
 			if (og == null || og.length < 1)
@@ -949,23 +985,27 @@ class SScript
 			{
 				try
 				{	
-					if (string != null && string.length > 0)
-						global[string] = this;
-
-					var expr:Expr = parser.parseString(string #if hscriptPos , og #end);
-					interp.execute(expr);
 					script = string;
+
+					if (script != null && script.length > 0)
+						global[script] = this;
+
+					var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
+					interp.execute(expr);
 				}
 				catch (e)
 				{
 					script = "";
 					parsingExceptions.push(new Exception(e.details()));
 
-					try
-						scriptX = new SScriptX(string, this)
-					catch (e)
+					if (classSupport)
 					{
-						scriptX = null;
+						try
+							scriptX = new SScriptX(string, this)
+						catch (e)
+						{
+							scriptX = null;
+						}
 					}
 				}
 			}
@@ -1105,9 +1145,10 @@ class SScript
 		if (global.exists(scriptFile))
 			global.remove(scriptFile);
 		
-		for (i => k in interp.variables)
-			if (SScriptX.variables.exists(i))
-				SScriptX.variables.remove(i);
+		if (classSupport)
+			for (i => k in interp.variables)
+				if (SScriptX.variables.exists(i))
+					SScriptX.variables.remove(i);
 
 		interp.variables.clear();
 		if (scriptX != null)
@@ -1220,4 +1261,26 @@ class SScript
 		return customOrigin = value;
 	}
 	#end
+
+	static function set_defaultTypeCheck(value:Null<Bool>):Null<Bool> 
+	{
+		for (i in global)
+		{
+			i.typeCheck = value == null ? false : value;
+			i.execute();
+		}
+
+		return defaultTypeCheck = value;
+	}
+
+	static function set_defaultClassSupport(value:Null<Bool>):Null<Bool> 
+	{
+		for (i in global)
+		{
+			i.classSupport = value == null ? false : value;
+			i.execute();
+		}
+
+		return defaultClassSupport = value;
+	}
 }
