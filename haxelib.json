@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "classPath": "src/",
-  "releasenote": "More customizibility + Type checker completely fixed",
+  "releasenote": "Return functions with no value + added startedExecute back",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

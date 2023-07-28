@@ -251,8 +251,9 @@ class SScript
 
 		@param scriptPath The script path or the script itself (Files are recommended).
 		@param Preset If true, SScript will set some useful variables to interp. Override `preset` to customize the settings.
+		@param startExecute If true, script will execute itself. If false, it will not execute.	
 	**/
-	public function new(?scriptPath:String = "", ?preset:Bool = true)
+	public function new(?scriptPath:String = "", ?preset:Bool = true, ?startExecute:Bool = true)
 	{
 		var time = Timer.stamp();
 
@@ -337,6 +338,8 @@ class SScript
 		try 
 		{
 			doFile(scriptPath);
+			if (startExecute)
+				execute();
 			if (debugTraces)
 			{
 				if (lastReportedTime == 0)
@@ -924,8 +927,6 @@ class SScript
 				global[scriptFile] = this;
 			else if (script != null && script.length > 0)
 				global[script] = this;
-
-			execute();
 		}
 	}
 
