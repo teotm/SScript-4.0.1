@@ -124,6 +124,13 @@ class SScript
 	#end
 
 	/**
+		Script's own return value.
+		
+		This is not to be messed up with function's return value.
+	**/
+	public var returnValue(default, null):Null<Dynamic>;
+
+	/**
 		Whether the type checker should be enabled.
 	**/
 	public var typeCheck:Bool = false;
@@ -374,7 +381,8 @@ class SScript
 		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
-			interp.execute(expr);
+			var r = interp.execute(expr);
+			returnValue = r;
 		}
 	}
 
@@ -991,7 +999,8 @@ class SScript
 						global[script] = this;
 
 					var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
-					interp.execute(expr);
+					var r = interp.execute(expr);
+					returnValue = r;
 				}
 				catch (e)
 				{
