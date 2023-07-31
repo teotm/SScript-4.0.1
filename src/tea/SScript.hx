@@ -54,7 +54,7 @@ class SScript
 	/**
 		If not null, switches EX mode support for all scripts.
 	**/
-	public static var defaultClassSupport(default, set):Null<Bool> = null;
+	public static var defaultClassSupport(default, set):Null<Bool> = true;
 
 	#if openflPos
 	/**
@@ -202,7 +202,7 @@ class SScript
 	/**
 		If true, enables some traces from `doString` and `new()`.
 	**/
-	public var debugTraces:Bool = false;
+	public var debugTraces:Bool = #if debug true #else false #end;
 
 	/**
 		Tells if this script is in EX mode, in EX mode you can only use `class`, `import` and `package`.
@@ -340,6 +340,8 @@ class SScript
 			doFile(scriptPath);
 			if (startExecute)
 				execute();
+			lastReportedTime = Timer.stamp() - time;
+
 			if (debugTraces)
 			{
 				if (lastReportedTime == 0)
@@ -347,7 +349,6 @@ class SScript
 				else 
 					trace('SScript instance created in ${lastReportedTime}s');
 			}
-			lastReportedTime = Timer.stamp() - time;
 
 		}
 		catch (e)
