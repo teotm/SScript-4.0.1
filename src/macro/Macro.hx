@@ -9,7 +9,7 @@ import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
 
-import tea.SScript;
+import tea.backend.SScriptVer;
 import tea.backend.crypto.Base32;
 
 #if sys
@@ -20,6 +20,8 @@ using StringTools;
 
 class Macro
 {
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(4, 1, 0);
+
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());
 	public static var definePath(get, never):String;
@@ -39,7 +41,7 @@ class Macro
 	macro
 	public static function checkOpenFL() 
 	{
-		SScript.VERSION.checkVer();
+		VERSION.checkVer();
 		
 		final defines = Context.getDefines();
 
