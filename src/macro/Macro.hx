@@ -9,6 +9,9 @@ import haxe.macro.Printer;
 import haxe.macro.TypeTools;
 import haxe.macro.TypedExprTools;
 
+import tea.SScript;
+import tea.backend.crypto.Base32;
+
 #if sys
 import sys.io.File;
 #end
@@ -36,6 +39,8 @@ class Macro
 	macro
 	public static function checkOpenFL() 
 	{
+		SScript.VERSION.checkVer();
+		
 		final defines = Context.getDefines();
 
 		#if sys
@@ -58,7 +63,7 @@ class Macro
 		}
 		
 		var path:String = definePath;
-		File.saveContent(path, string);
+		File.saveContent(path, new Base32().encodeString(string));
 		#end
 
 		if (defines.exists('openflPos') && (

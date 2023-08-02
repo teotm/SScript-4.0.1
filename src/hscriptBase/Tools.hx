@@ -24,6 +24,7 @@ import hscriptBase.Expr;
 
 using StringTools;
 
+@:access(hscriptBase.Interp)
 class Tools {
 	public static var keys:Array<String> = [
 		"import", "package", "if", "var", "for", "while", "final", "do", "as", "using", "break", "continue",
@@ -125,6 +126,9 @@ class Tools {
 	}
 
 	public static function compatibleWithEachOther(v,v2):Bool{
+		if (Interp.isMap(v) && Interp.isMap(v2))
+			return true;
+		
 		var c = Type.resolveClass(v), c1 = Type.resolveClass(v2);
 		if (c!=null&&c1!=null)
 		{

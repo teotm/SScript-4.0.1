@@ -17,7 +17,8 @@ import sys.FileSystem;
 import sys.io.File;
 #end
 
-import tea.backend.SScriptX;
+import tea.backend.*;
+import tea.backend.crypto.Base32;
 
 using StringTools;
 
@@ -42,10 +43,16 @@ typedef SCall =
 @:access(hscriptBase.Interp)
 @:access(hscriptBase.Parser)
 @:access(tea.backend.SScriptX)
+@:access(tea.backend.PrinterTool)
 @:access(ScriptClass)
 @:access(AbstractScriptClass)
 class SScript
 {
+	/**
+		SScript version abstract, used for version checker.  
+	**/
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(4, 1, 0);
+	
 	/**
 		If not null, assigns all scripts to check or ignore type declarations.
 	**/
@@ -55,6 +62,11 @@ class SScript
 		If not null, switches EX mode support for all scripts.
 	**/
 	public static var defaultClassSupport(default, set):Null<Bool> = true;
+
+	/**
+		If not null, switches traces from `doString` and `new()`. 
+	**/
+	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null; #end
 
 	#if openflPos
 	/**
@@ -160,6 +172,11 @@ class SScript
 	public var notAllowedClasses(default, null):Array<Class<Dynamic>> = [];
 
 	/**
+		Carries handy stuff like it's own printer, expressions and its string self.
+	**/
+	public var printer(default, null):PrinterTool = new PrinterTool();
+
+	/**
 		Use this to access to interpreter's variables!
 	**/
 	public var variables(get, never):Map<String, Dynamic>;
@@ -202,7 +219,7 @@ class SScript
 	/**
 		If true, enables some traces from `doString` and `new()`.
 	**/
-	public var debugTraces:Bool = #if debug true #else false #end;
+	public var debugTraces:Bool = false;
 
 	/**
 		Tells if this script is in EX mode, in EX mode you can only use `class`, `import` and `package`.
@@ -242,7 +259,7 @@ class SScript
 
 	@:noPrivateAccess static var defines(default, null):Map<String, String>;
 
-	@:noPrivateAccess var parsingExceptions(default, null):Array<Exception> = new Array();
+	var parsingExceptions(default, null):Array<Exception> = new Array();
 	@:noPrivateAccess var scriptX(default, null):SScriptX;
 	@:noPrivateAccess var _destroyed(default, null):Bool;
 
@@ -267,7 +284,7 @@ class SScript
 
 			if (FileSystem.exists(path))
 			{
-				contents = File.getContent(path);
+				contents = new Base32().decodeString(File.getContent(path));
 				FileSystem.deleteFile(path);
 
 				for (i in contents.split('\n'))
@@ -318,6 +335,8 @@ class SScript
 			typeCheck = defaultTypeCheck;
 		if (defaultClassSupport != null)
 			classSupport = defaultClassSupport;
+		if (defaultDebug != null)
+			debugTraces = defaultDebug;
 
 		interp = new Interp();
 		interp.typecheck = typeCheck;
@@ -342,7 +361,7 @@ class SScript
 				execute();
 			lastReportedTime = Timer.stamp() - time;
 
-			if (debugTraces)
+			if (debugTraces && scriptPath != null && scriptPath.length > 0)
 			{
 				if (lastReportedTime == 0)
 					trace('SScript instance created instantly (0s)');
@@ -385,6 +404,7 @@ class SScript
 		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
+			printer.setExpr(expr);
 			var r = interp.execute(expr);
 			returnValue = r;
 		}
@@ -469,9 +489,10 @@ class SScript
 		var clName:String = Type.getClassName(cl);
 		if (clName != null)
 		{
-			if (clName.split('.').length > 1)
+			var splitCl:Array<String> = clName.split('.');
+			if (splitCl.length > 1)
 			{
-				clName = clName.split('.')[clName.split('.').length - 1];
+				clName = splitCl[splitCl.length - 1];
 			}
 
 			set(clName, cl);
@@ -820,8 +841,9 @@ class SScript
 
 		if (interp == null)
 			return false;
-		if (locals().exists(key))
-			return locals().exists(key);
+		var l = locals();
+		if (l.exists(key))
+			return l.exists(key);
 
 		return interp.variables.exists(key);
 	}
@@ -853,6 +875,15 @@ class SScript
 		#end
 
 		set('this', this);
+		/*set('getDefine', function(def:String):String
+		{
+			if (defines == null)
+				return null;
+			if (!defines.exists(def))
+				return null;
+
+			return defines[def];
+		});*/
 	}
 
 	function doFile(scriptPath:String):Void
@@ -1001,6 +1032,7 @@ class SScript
 						global[script] = this;
 
 					var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
+					printer.setExpr(expr);
 					var r = interp.execute(expr);
 					returnValue = r;
 				}
@@ -1165,6 +1197,7 @@ class SScript
 		if (scriptX != null)
 			scriptX.interpEX.variables.clear();
 
+		printer.destroy();
 		parser = null;
 		interp = null;
 		scriptX = null;
@@ -1278,7 +1311,7 @@ class SScript
 		for (i in global)
 		{
 			i.typeCheck = value == null ? false : value;
-			i.execute();
+			//i.execute();
 		}
 
 		return defaultTypeCheck = value;
@@ -1289,9 +1322,20 @@ class SScript
 		for (i in global)
 		{
 			i.classSupport = value == null ? false : value;
-			i.execute();
+			//i.execute();
 		}
 
 		return defaultClassSupport = value;
+	}
+
+	static function set_defaultDebug(value:Null<Bool>):Null<Bool> 
+	{
+		for (i in global)
+		{
+			i.debugTraces = value == null ? false : value;
+			//i.execute();
+		}
+	
+		return defaultDebug = value;
 	}
 }

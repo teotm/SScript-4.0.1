@@ -6,7 +6,7 @@
   "description": "An easy-to-use Haxe Script tool for all targets.",
   "version": "4.0.1",
   "classPath": "src/",
-  "releasenote": "Return functions with no value + added startedExecute back",
+  "releasenote": "Return functions with no value + added startExecute back",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

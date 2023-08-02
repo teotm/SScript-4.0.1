@@ -322,6 +322,26 @@ class Printer {
 			add(" : ");
 			addType(t);
 			add(")");
+		case EImport(n, _, asIdent , _ ):
+			var n = Type.getClassName(n);
+			if( n == null )
+				return;
+
+			add("import ");
+			if( asIdent!=null && asIdent.length>0 ){
+				add(n);
+				add(" as ");
+				add(asIdent);
+			}
+			else 
+				add(n);
+		case EUsing(n,_):
+			var n = Type.getClassName(n);
+			if( n == null )
+				return;
+
+			add("using ");
+			add(n);
 		default:
 		}
 	}

@@ -143,7 +143,7 @@ class Interp {
 		binops.set("||",function(e1,e2) return me.expr(e1) == true || me.expr(e2) == true);
 		binops.set("&&",function(e1,e2) return me.expr(e1) == true && me.expr(e2) == true);
 		binops.set("=",assign);
-		binops.set("...",function(e1,e2) return new #if (haxe_211 || haxe3) IntIterator #else IntIter #end(me.expr(e1),me.expr(e2)));
+		binops.set("...",function(e1,e2) return new InterpIterator(me, e1, e2));
 		assignOp("+=",function(v1:Dynamic,v2:Dynamic) return v1 + v2);
 		assignOp("-=",function(v1:Float,v2:Float) return v1 - v2);
 		assignOp("*=",function(v1:Float,v2:Float) return v1 * v2);
@@ -343,7 +343,7 @@ class Interp {
 							else if(pack > 1)
 								error(ECustom('Multiple packages declared'));
 							pack++;
-						case EImport(_,_,_):
+						case EImport(_,_,_,_):
 							if(e.indexOf(i)>imports + pack)
 								error(ECustom('Unexpected import'));
 							imports++;
@@ -659,15 +659,28 @@ class Interp {
 		case EReturn(e):
 			returnValue = e == null ? null : expr(e);
 			throw SReturn;
-		case EUsing( e, c ) | EImport( e, c ):
+		case EImport( e, c , _ , m ):
+			if( c != null && e != null )
+				variables.set( c , e );
+			
+			if( m!=null ) 
+				for( i => k in m )
+					if ( k != null )
+						variables.set( i , k );
+
+			return null;
+		case EUsing( e, c ):
 			if (c != null && e != null)
 				variables.set( c , e );
 
 			return null;
 		case EPackage(p):
+			if( p == null )
+				error(EUnexpected(p));
+
 			if(p!=p.toLowerCase())
-				error(ECustom('Package path cannot have capital letters.'));
-			@:privateAccess script.setPackagePath(p==null?"":p);
+				error(ECustom('Package path cannot have capital letters'));
+			@:privateAccess script.setPackagePath(p);
 			return null;
 		case EFunction(params,fexpr,name,_,t,d):
 			var trk1 = switch(#if hscriptPos fexpr.e #else e #end){
@@ -964,7 +977,7 @@ class Interp {
 		if ( v.iterator != null ) try v = v.iterator() catch( e : Dynamic ) {};
 		#end
 		if( v.hasNext == null || v.next == null ) error(EInvalidIterator(v));
-		return v;
+		return cast v;
 	}
 
 	function forLoop(n,it,e,?p) {
@@ -986,8 +999,12 @@ class Interp {
 		restore(old);
 	}
 
-	inline function isMap(o:Dynamic):Bool {
-		return (o is IMap);
+	static inline function isMap(o:Dynamic):Bool {
+		var classes:Array<Dynamic> = ["Map", "StringMap", "IntMap", "ObjectMap", "HashMap", "EnumValueMap", "WeakMap"];
+		if (classes.contains(o))
+			return true;
+
+		return Std.isOfType(o, IMap);
 	}
 
 	inline function getMapValue(map:Dynamic, key:Dynamic):Dynamic {

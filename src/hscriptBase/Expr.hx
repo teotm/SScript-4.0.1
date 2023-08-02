@@ -71,7 +71,7 @@ enum Expr {
 	ESwitch( e : Expr, cases : Array<{ values : Array<Expr>, expr : Expr }>, ?defaultExpr : Expr);
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
-	EImport( i : Dynamic, c : String , ?ps : Array < Dynamic > );
+	EImport( i : Dynamic, c : String , ?asIdent : String , ?ps : Map < String , Dynamic > );
 	EPackage( ?p : String );
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );

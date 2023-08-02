@@ -1095,13 +1095,17 @@ class Parser {
 
 			if(maybe)asIdent=getIdent();
 
-			if(maybe&&""+asIdent=="null"&&isStar)
+			if(maybe&&(""+asIdent=="null"||""+asIdent=="")&&isStar)
 				unexpected(TId("as"));
+
+			var usedAs = maybe&&''+asIdent!="null";
 
 			var cl:String = null;
 			var eclass:Dynamic = null;
+			var og:String = null;
 			if (path.length > 1)
 			{
+				var og:String = null;
 				var c:Class<Dynamic> = Type.resolveClass(anPath[0]);
 				var property:Dynamic = Reflect.getProperty(c, path[0]);
 				
@@ -1111,17 +1115,18 @@ class Parser {
 				}
 
 				cl = path[path.length - 1];
+				og = cl;
 				property = Reflect.getProperty(property, cl);
-				if(maybe&&''+asIdent!="null")
+				if(usedAs)
 					cl=asIdent;
-				var ps = new Array();
+				var ps = new Map();
 				if(isStar){
 					var prop=Reflect.fields(property);
 					for(eprop in prop)
-						ps.push(Reflect.field(property, eprop));
+						ps[eprop] = Reflect.field(property, eprop);
 				}
 				
-				EImport( property, cl );
+				EImport( property, cl , usedAs ? asIdent : null, ps );
 			}
 			else 
 			{
@@ -1130,7 +1135,8 @@ class Parser {
 					eclass = Type.resolveClass(anPath[0]);
 					if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
 					cl = nulls[nulls.length - 1];
-					if(maybe&&''+asIdent!="null")
+					og = cl;
+					if(usedAs)
 						cl=asIdent;
 				}
 				else 
@@ -1142,35 +1148,39 @@ class Parser {
 						var prop = Reflect.getProperty(eclass, path[0]);
 						eclass = prop;
 						cl = path[0];
-						if(maybe&&''+asIdent!="null")
+						og = cl;
+						if(usedAs)
 							cl=asIdent;
 					}
 					if (path[0].startsWith(path[0].substring(0, 1).toUpperCase()))
 					{
 						try{
-						eclass = Type.resolveClass(anPath[0]);
-						if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
-						var prop = Reflect.getProperty(eclass, path[0]);
-						eclass = prop;
-						cl = path[0];
-						if(maybe&&''+asIdent!="null")
-						cl=asIdent;}
+							eclass = Type.resolveClass(anPath[0]);
+							if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
+							var prop = Reflect.getProperty(eclass, path[0]);
+							eclass = prop;
+							cl = path[0];
+							og = cl;
+							if(usedAs)
+								cl=asIdent;
+						}
 						catch(e){
 							try{
 								cl = path[0];
+								og = cl;
 								eclass = Type.resolveClass(cl);
 								if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
-								if(maybe&&''+asIdent!="null")
+								if(usedAs)
 									cl=asIdent;
 							}
 							catch(ec){
-								throw ec;
+								throw [e,ec];
 							}
 						}
 					}
 				}
 			}
-			mk(EImport( eclass , cl));
+			mk(EImport( eclass , cl , usedAs ? asIdent : null));
 		case 'package':
 			var path = [getIdent(false)];
 			if (!path.contains(null))
@@ -2304,7 +2314,7 @@ class Parser {
 		return TOp(op);
 	}
 
-	function constString( c ) {
+	static function constString( c ) {
 		return switch(c) {
 		case CInt(v): Std.string(v);
 		case CFloat(f): Std.string(f);
@@ -2315,7 +2325,7 @@ class Parser {
 		}
 	}
 
-	function tokenString( t ) {
+	public static function tokenString( t ) {
 		return switch( t ) {
 		case TEof: "<eof>";
 		case TConst(c): constString(c);
