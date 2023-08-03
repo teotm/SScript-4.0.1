@@ -43,9 +43,6 @@ enum Token {
 	TBkOpen;
 	TBkClose;
 	TQuestion;
-	TQDot;
-	TQDouble;
-	TQDoubleAssign;
 	TDoubleDot;
 	TMeta( s : String );
 	TPrepro( s : String );
@@ -133,7 +130,7 @@ class Parser {
 			["+", "-"],
 			["<<", ">>", ">>>"],
 			["|", "&", "^"],
-			["==", "!=", ">", "<", ">=", "<="],
+			["==", "!=", ">", "<", ">=", "<=", "==="],
 			["..."],
 			["&&"],
 			["||"],
@@ -1252,28 +1249,32 @@ class Parser {
 			ensure(TBkClose);
 			return parseExprNext(mk(EArray(e1,e2),pmin(e1)));
 		case TQuestion:
-			var e2 = parseExpr();
-			ensure(TDoubleDot);
-			var e3 = parseExpr();
-			return mk(ETernary(e1,e2,e3),pmin(e1),pmax(e3));
-		case TQDouble:
-			var e2 = parseExpr();
-			return mk(ECoalesce(e1,e2,false), pmin(e1));
-		case TQDoubleAssign:
-			var e2 = parseExpr();
-			return mk(ECoalesce(e1,e2,true), pmin(e1));
-		case TQDot:
 			var oldPos_ = readPos;
-			var tk = token();
-			switch tk {
-				case TId(s):
-					//push(tk);
-					return mk(ESafeNavigator(e1, s), pmin(e1));
-				case _:
+			var tk2 = token();
+			return switch (tk2)
+			{
+				case TQuestion:
+					var oldPos = readPos;
+					var tk1 = token();
+					var assign = false;
+					var e2;
+					if (Type.enumEq(tk1, TOp('=')))
+						assign = true;
+					if(!assign){readPos=oldPos - 1; while(true){tk1 = token(); if(tk1 == TQuestion)break;}} //cheap way to revert tokens
+					e2 = parseExpr();
+					mk(ECoalesce(e1,e2,assign));
+				default:
+					readPos=oldPos_ - 1;
+					while(true)
+					{
+						tk2=token();
+						if(tk2==TQuestion)break;
+					}
+					var e2 = parseExpr();
+					ensure(TDoubleDot);
+					var e3 = parseExpr();
+					return mk(ETernary(e1,e2,e3),pmin(e1),pmax(e3));
 			}
-
-			unexpected(tk);
-			return null; 
 		default:
 			push(tk);
 			return e1;
@@ -1965,24 +1966,7 @@ class Parser {
 			case "[".code: return TBkOpen;
 			case "]".code: return TBkClose;
 			case "'".code, '"'.code: return TConst( CString(readString(char), true) );
-			case "?".code: 
-				char = readChar();
-				if( char == '.'.code )
-					return TQDot;
-				else if ( char == '?'.code )
-				{
-					char = readChar();
-
-					if( char == '='.code )
-						return TQDoubleAssign;
-					else
-						readPos--;
-
-					return TQDouble;
-				}
-
-				this.char = char;
-				return TQuestion;
+			case "?".code: return TQuestion;
 			case ":".code: return TDoubleDot;
 			case '='.code:
 				char = readChar();
@@ -1991,6 +1975,8 @@ class Parser {
 				else if ( char == '>'.code )
 					return TOp("=>");
 				char=readChar();
+				if ( char == '='.code )
+						return TOp("===");
 				
 				this.char = char;
 				return TOp("=");
@@ -2355,9 +2341,6 @@ class Parser {
 		case TBkOpen: "[";
 		case TBkClose: "]";
 		case TQuestion: "?";
-		case TQDot: "?.";
-		case TQDouble: "??";
-		case TQDoubleAssign: "??=";
 		case TDoubleDot: ":";
 		case TMeta(id): "@" + id;
 		case TPrepro(id): "#" + id;

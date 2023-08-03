@@ -22,8 +22,6 @@
 package hscriptBase;
 import hscriptBase.Expr;
 
-using StringTools;
-
 class Printer {
 
 	var buf : StringBuf;
@@ -36,16 +34,14 @@ class Printer {
 		buf = new StringBuf();
 		tabs = "";
 		expr(e);
-		/*if(!buf.toString().trim().endsWith(';'))
-			buf.add(';');*/
-		return buf.toString().trim();
+		return buf.toString();
 	}
 
 	public function typeToString( t : CType ) {
 		buf = new StringBuf();
 		tabs = "";
 		type(t);
-		return buf.toString().trim();
+		return buf.toString();
 	}
 
 	inline function add<T>(s:T) buf.add(s);
@@ -107,7 +103,7 @@ class Printer {
 
 	function addType( t : CType ) {
 		if( t != null ) {
-			add(":");
+			add(" : ");
 			type(t);
 		}
 	}
@@ -128,13 +124,6 @@ class Printer {
 			add(v);
 		case EVar(n, t, e):
 			add("var " + n);
-			addType(t);
-			if( e != null ) {
-				add(" = ");
-				expr(e);
-			}
-		case EFinal(n, t, e):
-			add("final " + n);
 			addType(t);
 			if( e != null ) {
 				add(" = ");
@@ -161,10 +150,7 @@ class Printer {
 			add("." + f);
 		case EBinop(op, e1, e2):
 			expr(e1);
-			if(op == "...")
-				add(op);
-			else
-				add("" + op + "");
+			add(" " + op + " ");
 			expr(e2);
 		case EUnop(op, pre, e):
 			if( pre ) {
@@ -213,9 +199,9 @@ class Printer {
 			expr(cond);
 			add(" )");
 		case EFor(v, it, e):
-			add("for ("+v+" in ");
+			add("for( "+v+" in ");
 			expr(it);
-			add(") ");
+			add(" ) ");
 			expr(e);
 		case EBreak:
 			add("break");
@@ -296,11 +282,11 @@ class Printer {
 			add(" : ");
 			expr(e2);
 		case ESwitch(e, cases, def):
-			add("switch ");
+			add("switch( ");
 			expr(e);
-			add("\n{\n");
+			add(") {");
 			for( c in cases ) {
-				add("\tcase ");
+				add("case ");
 				var first = true;
 				for( v in c.values ) {
 					if( first ) first = false else add(", ");
@@ -308,18 +294,12 @@ class Printer {
 				}
 				add(": ");
 				expr(c.expr);
-				if (isEmptyBlock(c.expr))
-					add('\n');
-				else 
-					add(";\n");
+				add(";\n");
 			}
 			if( def != null ) {
-				add("\tdefault: ");
+				add("default: ");
 				expr(def);
-				if (isEmptyBlock(def))
-					add('\n');
-				else 
-					add(";\n");
+				add(";\n");
 			}
 			add("}");
 		case EMeta(name, args, e):
@@ -398,15 +378,5 @@ class Printer {
 		#end
 	}
 
-	static function isEmptyBlock(e:Expr) : Bool {
-		var e = Tools.expr(e);
-		switch e {
-			case EBlock(e):
-				if (e == null || e.length < 1)
-					return true;
-			case _:
-		}
 
-		return false;
-	}
 }
