@@ -11,6 +11,8 @@ class InterpIterator
     	var min:Dynamic = instance.expr(expr1);
 		var max:Dynamic = instance.expr(expr2);
 
+		if (min == null)
+			instance.error(ECustom('null should be Int'));
 		if (max == null)
 			instance.error(ECustom('null should be Int'));
 

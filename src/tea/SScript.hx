@@ -61,12 +61,12 @@ class SScript
 	/**
 		If not null, switches EX mode support for all scripts.
 	**/
-	public static var defaultClassSupport(default, set):Null<Bool> = true;
+	public static var defaultClassSupport(default, set):Null<Bool> = null;
 
 	/**
 		If not null, switches traces from `doString` and `new()`. 
 	**/
-	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null; #end
+	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null #end;
 
 	#if openflPos
 	/**
@@ -170,11 +170,6 @@ class SScript
 		Used in `set`. If a class is set in this script while being in this array, an exception will be thrown.
 	**/
 	public var notAllowedClasses(default, null):Array<Class<Dynamic>> = [];
-
-	/**
-		Carries handy stuff like it's own printer, expressions and its string self.
-	**/
-	public var printer(default, null):PrinterTool = new PrinterTool();
 
 	/**
 		Use this to access to interpreter's variables!
@@ -359,6 +354,17 @@ class SScript
 			doFile(scriptPath);
 			if (startExecute)
 				execute();
+			
+			if (scriptX != null)
+			{
+				if (scriptX.scriptFile != null && scriptX.scriptFile.length > 0)
+					global[scriptX.scriptFile] = this;
+			}
+			else if (scriptFile != null && scriptFile.length > 0)
+				global[scriptFile] = this;
+			else if (script != null && script.length > 0)
+				global[script] = this;
+
 			lastReportedTime = Timer.stamp() - time;
 
 			if (debugTraces && scriptPath != null && scriptPath.length > 0)
@@ -404,7 +410,6 @@ class SScript
 		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
-			printer.setExpr(expr);
 			var r = interp.execute(expr);
 			returnValue = r;
 		}
@@ -949,16 +954,6 @@ class SScript
 				scriptFile = "";
 				#end
 			#end
-
-			if (scriptX != null)
-			{
-				if (scriptX.scriptFile != null && scriptX.scriptFile.length > 0)
-					global[scriptX.scriptFile] = this;
-			}
-			else if (scriptFile != null && scriptFile.length > 0)
-				global[scriptFile] = this;
-			else if (script != null && script.length > 0)
-				global[script] = this;
 		}
 	}
 
@@ -1032,14 +1027,18 @@ class SScript
 						global[script] = this;
 
 					var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
-					printer.setExpr(expr);
 					var r = interp.execute(expr);
 					returnValue = r;
 				}
 				catch (e)
 				{
 					script = "";
-					parsingExceptions.push(new Exception(e.details()));
+					returnValue = null;
+
+					var e = e.details();
+					parsingExceptions.push(new Exception(e));
+					if (debugTraces)
+						trace(e);
 
 					if (classSupport)
 					{
@@ -1197,7 +1196,6 @@ class SScript
 		if (scriptX != null)
 			scriptX.interpEX.variables.clear();
 
-		printer.destroy();
 		parser = null;
 		interp = null;
 		scriptX = null;
