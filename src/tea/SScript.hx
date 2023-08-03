@@ -43,7 +43,6 @@ typedef SCall =
 @:access(hscriptBase.Interp)
 @:access(hscriptBase.Parser)
 @:access(tea.backend.SScriptX)
-@:access(tea.backend.PrinterTool)
 @:access(ScriptClass)
 @:access(AbstractScriptClass)
 class SScript
@@ -66,7 +65,7 @@ class SScript
 	/**
 		If not null, switches traces from `doString` and `new()`. 
 	**/
-	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null; #end
+	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null #end;
 
 	#if openflPos
 	/**
@@ -170,11 +169,6 @@ class SScript
 		Used in `set`. If a class is set in this script while being in this array, an exception will be thrown.
 	**/
 	public var notAllowedClasses(default, null):Array<Class<Dynamic>> = [];
-
-	/**
-		Carries handy stuff like it's own printer, expressions and its string self.
-	**/
-	public var printer(default, null):PrinterTool = new PrinterTool();
 
 	/**
 		Use this to access to interpreter's variables!
@@ -404,7 +398,6 @@ class SScript
 		if (script != null && script.length > 0)
 		{
 			var expr:Expr = parser.parseString(script #if hscriptPos , origin #end);
-			printer.setExpr(expr);
 			var r = interp.execute(expr);
 			returnValue = r;
 		}
@@ -1032,7 +1025,6 @@ class SScript
 						global[script] = this;
 
 					var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
-					printer.setExpr(expr);
 					var r = interp.execute(expr);
 					returnValue = r;
 				}
@@ -1197,7 +1189,6 @@ class SScript
 		if (scriptX != null)
 			scriptX.interpEX.variables.clear();
 
-		printer.destroy();
 		parser = null;
 		interp = null;
 		scriptX = null;

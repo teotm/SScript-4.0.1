@@ -910,6 +910,12 @@ class Interp {
 			return o;
 		case ECoalesce(e1,e2,assign):
 			return if (assign) coalesce2(e1,e2) else coalesce(e1,e2);
+		case ESafeNavigator(e1, f):
+			var e = expr(e1);
+			if( e == null )
+			 	return null;
+
+			return get(e,f);
 		case ETernary(econd,e1,e2):
 			return if( expr(econd) == true ) expr(e1) else expr(e2);
 		case ESwitch(e, cases, def):

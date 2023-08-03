@@ -56,7 +56,8 @@ enum Expr {
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
 	EWhile( cond : Expr, e : Expr );
 	EFor( v : String, it : Expr, e : Expr );
-	ECoalesce(e1 : Expr , e2 : Expr , assign : Bool);
+	ECoalesce( e1 : Expr , e2 : Expr , assign : Bool);
+	ESafeNavigator( e1 : Expr , f : String );
 	EBreak;
 	EContinue;
 	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?p : TrickyToken , ?d : DynamicToken );
