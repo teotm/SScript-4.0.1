@@ -249,6 +249,29 @@ trace('sys is active');
 
 ------------
 
+## Using Haxe 4.3.0 Syntaxes
+SScript supports both `?.` and `??` sytnaxes including `??=`.
+
+```haxe
+import tea.SScript;
+class Main 
+{
+	static function main()
+	{
+		var script:SScript = {};
+		script.doString("
+			var string:String = null;
+			trace(string.length); // Throws an error
+			trace(string?.length); // Doesn't throw an error and returns null
+			trace(string ?? 'ss'); // Returns 'ss';
+			trace(string ??= 'ss'); // Returns 'ss' and assigns it to `string` variable
+		");
+	}
+}
+```
+
+------------
+
 ## Extending SScript
 You can create a class extending SScript to customize it better.
 ```haxe
