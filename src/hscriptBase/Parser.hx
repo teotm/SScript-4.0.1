@@ -20,8 +20,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 package hscriptBase;
-import haxe.macro.Compiler;
-import haxe.macro.Context;
 import haxe.Exception;
 import hscriptBase.Expr;
 import tea.SScript;

@@ -43,6 +43,7 @@ typedef SCall =
 @:access(hscriptBase.Interp)
 @:access(hscriptBase.Parser)
 @:access(tea.backend.SScriptX)
+@:access(tea.backend.PrinterTool)
 @:access(ScriptClass)
 @:access(AbstractScriptClass)
 class SScript
