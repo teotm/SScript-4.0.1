@@ -429,6 +429,9 @@ class SScript
 			else if (obj != null && macro.Macro.macroClasses.contains(obj))
 				throw '$key cannot be a Macro class (tried to set ${Type.getClassName(obj)})';
 
+			if (!active)
+				return;
+
 			if (classSupport)
 				SScriptX.variables[key] = obj;
 
@@ -534,6 +537,9 @@ class SScript
 	{
 		if (_destroyed)
 			return null;
+
+		if (!active)
+			return [];
 
 		if (scriptX != null)
 		{
@@ -666,6 +672,14 @@ class SScript
 		if (_destroyed)
 			return null;
 
+		if (!active)
+			return {
+				exceptions: [new Exception((if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScript instance") + " is not active.")],
+				calledFunction: func,
+				succeeded: false,
+				returnValue: null
+			};
+
 		var time:Float = Timer.stamp();
 
 		var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
@@ -791,6 +805,8 @@ class SScript
 	{
 		if (_destroyed)
 			return null;
+		if (!active)
+			return this;
 
 		if (scriptX != null)
 		{
@@ -818,6 +834,8 @@ class SScript
 	public function exists(key:String):Bool
 	{
 		if (_destroyed)
+			return false;
+		if (!active)
 			return false;
 
 		if (scriptX != null)
@@ -848,6 +866,8 @@ class SScript
 	public function preset():Void
 	{
 		if (_destroyed)
+			return;
+		if (!active)
 			return;
 
 		setClass(Date);
