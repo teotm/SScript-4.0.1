@@ -29,7 +29,7 @@ abstract SScriptVer(Null<Int>)
             var me2:SScriptVer = fromString(Http.requestUrl('https://raw.githubusercontent.com/TheWorldMachinima/SScript/testing/gitVer.txt').trim());
 
             if (me < me2.toInt())
-                trace('You\'re using an outdated version of SScript (${toString()}). Please update it to ${me2}.');
+                #if sys Sys.println #else trace #end('You\'re using an outdated version of SScript (${toString()}). Please update it to ${me2}.');
         }
     }
 
