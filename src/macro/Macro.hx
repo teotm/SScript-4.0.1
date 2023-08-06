@@ -66,6 +66,7 @@ class Macro
 		
 		var path:String = definePath;
 		File.saveContent(path, new Base32().encodeString(string));
+		trace('Successfully generated defines file in ${path.split('defines.thk').join('')}');
 		#end
 
 		if (defines.exists('openflPos') && (
