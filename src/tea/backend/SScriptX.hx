@@ -73,6 +73,8 @@ class SScriptX
 	**/
 	var scriptFile(default, null):String;
 
+	@:noPrivateAccess var _destroyed(default, null):Bool = false;
+
 	/**
 		Creates a new `SScriptX` instance.
 		@param scriptFile The script file or the script itself. It is optional, but you'll need to `doString` after to use this instance.
@@ -92,7 +94,7 @@ class SScriptX
 				interpEX.origin = scriptFile;
 
 				var contents:String = #if openflPos try Assets.getText(scriptFile) catch (e) #end File.getContent(scriptFile);
-				interpEX.addModule(File.getContent(contents));
+				interpEX.addModule(contents);
 			}
 			else
 			{
@@ -146,6 +148,15 @@ class SScriptX
 	**/
 	function callFunction(func:String, ?args:Array<Dynamic>, ?className:String):SCall
 	{
+		if (_destroyed)
+			return {
+				returnValue: null,
+				className: null,
+				calledFunction: func,
+				succeeded: false,
+				exceptions: [new Exception((if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScriptX instance") + " is destroyed.")]
+			}
+
 		var cl = className == null ? null : classes[className];
 		if (cl != null)
 		{
@@ -216,6 +227,9 @@ class SScriptX
 	**/
 	function set(key:String, value:Dynamic):SScriptX
 	{
+		if (_destroyed)
+			return null;
+
 		if (interpEX == null)
 			return null;
 
@@ -231,39 +245,66 @@ class SScriptX
 
 	function doString(string:String, ?origin:String):SScriptX
 	{
+		if (_destroyed)
+			return null;
+
 		if (origin == 'SScript')
 			origin = 'SScriptX';
 		
-		var vars = interpEX.variables.copy();
+		/*var vars = interpEX.variables.copy();
 		interpEX = new InterpEx(false);
 		interpEX.variables = vars;
 		if (origin != null)
-			interpEX.origin = origin;
+			interpEX.origin = origin;*/
 		interpEX.addModule(string);
 		clearClasses();
 		createClasses();
+		trace(interpEX.variables);
 
 		return this;
 	}
 
+	function destroy()
+	{
+		script = null;
+		tea = null;
+		
+		clearClasses();
+
+		currentClass = null;
+		interpEX = null;
+		scriptFile = null;
+		_destroyed = true;
+	}
+
 	inline function createClasses()
 	{
+		if (_destroyed)
+			return;
+
 		if (scriptFile != null)
 			for (i in InterpEx._scriptClassDescriptors.keys())
 				classes[i] = interpEX.createScriptClassInstance(i);
 
-		if (Reflect.fields(classes) != null && Reflect.fields(classes).length > 0)
-			currentClass = Reflect.fields(classes)[0];
+		var f = Reflect.fields(classes);
+		if (f != null && f.length > 0)
+			currentClass = f[0];
 	}
 
 	inline function clearClasses()
 	{
+		if (_destroyed)
+			return;
+
 		classes = {};
 		currentClass = null;
 	}
 
 	inline function set_currentClass(value:String):String
 	{
+		if (_destroyed)
+			return currentClass = null;
+
 		if (value == null)
 			currentScriptClass = null;
 		else if (classes != null && classes[value] != null)
@@ -275,7 +316,7 @@ class SScriptX
 	}
 
 	inline function toString():String
-		return "[ex.SScriptX]";
+		return if (_destroyed) "null" else "SScriptX SScriptX";
 
 	function get_currentSuperClass():Class<Dynamic>
 	{

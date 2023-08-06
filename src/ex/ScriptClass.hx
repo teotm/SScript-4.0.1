@@ -13,6 +13,8 @@ enum Param
 }
 
 @:access(tea.SScript)
+@:access(ex.InterpEx)
+@:access(hscriptBase.Interp)
 class ScriptClass
 {
 	private var _c:ClassDeclEx;
@@ -144,7 +146,6 @@ class ScriptClass
 	{
 		var field = findField(name);
 		var r:Dynamic = null;
-
 		if (field != null)
 		{
 			var fn = findFunction(name);
@@ -154,54 +155,20 @@ class ScriptClass
 				@:privateAccess
 				if (!f.access.contains(AOverride))
 				{
-					if (superClass != null && Reflect.getProperty(superClass, name) != null)
-						throw 'Field $name should be declared with \'override\' since it is inherited from superclass $className';
-					else
+					if (superClass != null)
 					{
-						var className:String = null;
-						// JavaScript issues
-						if (superClass != null)
-							className = Type.getClassName(superClass);
-						if (className == null)
-							className = superClassName;
-						var expr = Tools.expr(fn.expr);
-						function isSuper(expr:ExprDef)
+						if (Std.isOfType(superClass, ScriptClass))
 						{
-							var e = expr;
-							return switch e
+							var cl:ScriptClass = cast superClass;
+							if (cl._cachedFieldDecls.exists(name))
 							{
-								case EIdent(v, _):
-									if (v == 'super') true; else false;
-								case EField(e, _):
-									switch Tools.expr(e)
-									{
-										case EIdent(v, _):
-											if (v == 'super') true; else false;
-										case _:
-											false;
-									}
-								case _: false;
+								var c = cl._cachedFieldDecls[name];
+								if (c != null && !c.access.contains(AStatic))
+									throw 'Field $name should be declared with \'override\' since it is inherited from superclass ${cl.className}';
 							}
 						}
-						switch expr
-						{
-							case EBlock(e):
-								for (i in e)
-								{
-									var i = Tools.expr(i);
-									if (isSuper(i))
-										throw 'Field $name should be declared with \'override\' since it is inherited from superclass $className';
-									else
-										switch i
-										{
-											case ECall(e, _):
-												if (isSuper(Tools.expr(e)))
-													throw 'Field $name should be declared with \'override\' since it is inherited from superclass $className';
-											case _:
-										}
-								}
-							case _:
-						}
+						else if (Reflect.getProperty(superClass, name) != null)
+							throw 'Field $name should be declared with \'override\' since it is inherited from superclass ${Type.getClassName(superClass)}';
 					}
 				}
 			}
@@ -219,7 +186,6 @@ class ScriptClass
 				{
 					value = _interp.expr(a.value);
 				}
-
 				if (_interp.variables.exists(a.name))
 				{
 					previousValues.set(a.name, _interp.variables.get(a.name));
@@ -325,7 +291,7 @@ class ScriptClass
 	}
 
 	public function listFunctions():Map<String, FunctionDecl>
-		return if (_cachedFunctionDecls != null) _cachedFunctionDecls else new Map();
+		return if (_cachedFunctionDecls != null) _cachedFunctionDecls else [];
 
 	private var _cachedFieldDecls:Map<String, FieldDecl> = null;
 	private var _cachedFunctionDecls:Map<String, FunctionDecl> = null;

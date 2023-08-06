@@ -13,6 +13,7 @@ class InterpEx extends hscriptBase.Interp
 	var pkg(default, null):String;
 
 	@:noPrivateAccess private static var interps:Array<InterpEx> = [];
+
 	private var _proxy:AbstractScriptClass = null;
 	var origin:String = "SScriptX";
 
@@ -21,15 +22,17 @@ class InterpEx extends hscriptBase.Interp
 	public function new(proxy:AbstractScriptClass = null, ?push:Bool = true, ?superClassInstances:Map<String, Dynamic>)
 	{
 		super();
+
 		_proxy = proxy;
 		variables.set("Type", Type);
 		variables.set("Math", Math);
 		variables.set("Std", Std);
 		if (push)
 			interps.push(this);
-		for (i in SScriptX.variables.keys())
+
+		for (i => k in SScriptX.variables)
 			if (!variables.exists(i))
-				variables.set(i, SScriptX.variables.get(i));
+				variables.set(i, k);
 	}
 
 	override function posInfos() {

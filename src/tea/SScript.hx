@@ -719,7 +719,7 @@ class SScript
 		var callX:SCall = null;
 		if (scriptX != null)
 		{
-			callX = scriptX.callFunction(func);
+			callX = scriptX.callFunction(func, args, className);
 		}
 		else
 		{
@@ -1056,17 +1056,21 @@ class SScript
 					if (classSupport)
 					{
 						try
-							scriptX = new SScriptX(string, this)
+						{
+							parsingExceptions.pop();
+							scriptX = new SScriptX(string, this);
+						}
 						catch (e)
 						{
 							scriptX = null;
+							parsingExceptions.push(new Exception(e.details()));
 						}
 					}
 				}
 			}
 
 			lastReportedTime = Timer.stamp() - time;
-
+ 
 			if (debugTraces)
 			{
 				if (lastReportedTime == 0)
@@ -1088,7 +1092,7 @@ class SScript
 		if (scriptFile != null && scriptFile.length > 0)
 			return scriptFile;
 
-		return scriptX != null ? "[SScriptX SScriptX]" : "[SScript SScript]";
+		return scriptX != null ? scriptX.toString() : "[SScript SScript]";
 	}
 
 	#if (sys || openflPos)
@@ -1207,7 +1211,9 @@ class SScript
 
 		interp.variables.clear();
 		if (scriptX != null)
-			scriptX.interpEX.variables.clear();
+		{
+			scriptX.destroy();
+		}
 
 		parser = null;
 		interp = null;
