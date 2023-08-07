@@ -307,4 +307,4 @@ It is recommended to override only `preset`, other functions were not written wi
 7. `currentSuperClass` is the actual parent class of `currentScriptClass`. It's type is `Class<Dynamic>`.
 
 ## Contact
-If you have any questions or requests, open an issue here or message me on my Discord (quietunluckyicecream).
+If you have any questions or requests, open an issue here or message me on my Discord (tahirkarabekiroglu).
