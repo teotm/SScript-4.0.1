@@ -1,5 +1,6 @@
 package hscriptBase;
 
+@:keepSub
 @:access(hscriptBase.Interp)
 class InterpIterator 
 {

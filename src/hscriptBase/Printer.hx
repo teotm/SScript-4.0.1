@@ -22,6 +22,7 @@
 package hscriptBase;
 import hscriptBase.Expr;
 
+@:keep
 class Printer {
 
 	var buf : StringBuf;
@@ -360,11 +361,11 @@ class Printer {
 			case EUnknownVariable(v): "Unknown variable: "+v;
 			case EInvalidIterator(v): "Invalid iterator: "+v;
 			case EInvalidOp(op): "Invalid operator: "+op;
-			case EInvalidAccess(f): "Invalid access to field " + f;
+			case EInvalidAccess(f): "Tried to access a null variable " + "\"" + f + "\"";
 			case ECustom(msg): msg;
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
 			case EUnmatchingType(v,t,n): t + " should be " + v + "" + if(n != null) ' for variable "$n".' else ".";
-			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
+			case EUnexistingField(f,f2): f2 + " has no field " + f;
 			case EUnknownIdentifier(v): "Unknown identifier: "  + v + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";

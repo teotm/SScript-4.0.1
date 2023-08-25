@@ -6,6 +6,7 @@ using StringTools;
 
 abstract SScriptVer(Null<Int>)
 {
+    public static var newerVer(default, null):SScriptVer = null;
     public inline function new(num1:Int, num2:Int, num3:Int) 
     {
         this = 0;
@@ -21,16 +22,34 @@ abstract SScriptVer(Null<Int>)
         this = Std.parseInt(string);
     }
 
-    public function checkVer():Void
+    public function checkVer():Bool
     {
+        var returnValue:Bool = true;
         try 
         {
             var me:Int = toInt();
-            var me2:SScriptVer = fromString(Http.requestUrl('https://raw.githubusercontent.com/TheWorldMachinima/SScript/testing/gitVer.txt').trim());
+            var me2:SScriptVer = fromString(toString());
+            try 
+            {
+                var http = new Http('https://raw.githubusercontent.com/TheWorldMachinima/SScript/testing/gitVer.txt');
 
-            if (me < me2.toInt())
-                #if sys Sys.println #else trace #end('You\'re using an outdated version of SScript (${toString()}). Please update it to ${me2}.');
+                http.onData = function(data:String)
+                {
+                    me2 = fromString(data);
+                    if (me < me2.toInt())
+                    {
+                        returnValue = false;
+                        newerVer = me2;
+                    }
+                }
+
+                http.onError = function(msg:String) returnValue = true;
+            }
+            catch (e) returnValue = true;
         }
+        catch (e) returnValue = true;
+
+        return returnValue;
     }
 
     public static function fromString(string:String):SScriptVer

@@ -20,12 +20,17 @@ using StringTools;
 
 class Macro
 {
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(4, 1, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 0, 0);
 
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());
 	public static var definePath(get, never):String;
 	#end
+
+	static var credits:Array<String> = [
+		"Special Thanks:",
+		"- CrowPlexus\n",
+	];
 
 	public static var macroClasses:Array<Class<Dynamic>> = [
 		Compiler,
@@ -36,13 +41,30 @@ class Macro
 		TypedExprTools,
 		ExprTools,
 		TypeTools,
-	];
+	]; 
 
 	macro
-	public static function checkOpenFL() 
+	public static function initiateMacro() 
 	{
-		VERSION.checkVer();
+		var long:String = '-------------------------------------------------------------------';
+		log('------------------------SScript ${VERSION} Macro------------------------');
+
+		for (i in credits)
+			log(i);
+
+		log('Checking version...');
 		
+		#if CHECK_SUPERLATIVE
+		var v = VERSION.checkVer();
+
+		if (v)
+			log('Done! You are using the latest SScript version!');
+		else if (!v)
+			log('You\'re using an outdated version of SScript (${VERSION}). Please update it to ${SScriptVer.newerVer}.');
+		#else
+		log('Done! You are using the latest SScript version!');
+		#end
+
 		final defines = Context.getDefines();
 
 		#if sys
@@ -66,7 +88,6 @@ class Macro
 		
 		var path:String = definePath;
 		File.saveContent(path, new Base32().encodeString(string));
-		trace('Successfully generated defines file in ${path.split('defines.thk').join('')}');
 		#end
 
 		if (defines.exists('openflPos') && (
@@ -79,8 +100,23 @@ class Macro
 		#else
 		true
 		#end))
-		#if (openfl < "9.2.0") throw 'Your openfl is outdated (${defines.get('openfl')}), please update openfl' #else throw 'You cannot use \'openflPos\' without targeting openfl' #end;
+		#if (openfl < "9.2.0") Context.fatalError('Your openfl is outdated (${defines.get('openfl')}), please update openfl', (macro null).pos) #else Context.fatalError('You cannot use \'openflPos\' without targeting openfl', (macro null).pos) #end;
+
+		if (defines.get("dce") != "std")
+			Context.fatalError("SScript needs DCE to be std to work properly", (macro null).pos);
+
+		log(long);
+		
 		return macro {}
+	}
+
+	public static function log(log:String)
+	{
+		#if sys
+		Sys.println(log);
+		#else
+		trace('\n' + log);
+		#end
 	}
 
 	#if sys
@@ -92,7 +128,7 @@ class Macro
 		else if (!isWindows && !env.endsWith('/'))
 			env += '/';
 
-		return env + 'defines.thk';
+		return env + 'defines.cocoa';
 	}
 	#end
 }

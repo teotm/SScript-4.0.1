@@ -24,13 +24,14 @@ import hscriptBase.Expr;
 
 using StringTools;
 
+@:keep
 @:access(hscriptBase.Interp)
 class Tools {
 	public static var keys:Array<String> = [
 		"import", "package", "if", "var", "for", "while", "final", "do", "as", "using", "break", "continue",
 		"public", "private", "static", "overload", "override", "class", "function", "else", "try", "catch",
 		"abstract", "case", "switch", "untyped", "cast", "typedef", "dynamic", "default", "enum", "extern",
-		"extends", "implements", "in", "macro", "new", "null", "return", "throw", "from", "to", "super",
+		"extends", "implements", "in", "macro", "new", "null", "return", "throw", "from", "to", "super", "is"
 	];
 
 	public static function iter( e : Expr, f : Expr -> Void ) {

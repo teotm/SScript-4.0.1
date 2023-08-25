@@ -45,8 +45,8 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
-	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken , ?g : Array<String> );
-	EFinal( f : String , ?t : CType , ?e : Expr , ?p : TrickyToken );
+	EVar( n : String, ?t : CType, ?e : Expr , ?g : Array<String> );
+	EFinal( f : String , ?t : CType , ?e : Expr );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String );
@@ -60,7 +60,7 @@ enum Expr {
 	ESafeNavigator( e1 : Expr , f : String );
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?p : TrickyToken , ?d : DynamicToken );
+	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?d : DynamicToken );
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EArrayDecl( e : Array<Expr> );
@@ -77,8 +77,6 @@ enum Expr {
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 }
-
-typedef TrickyToken = { f : String , v : Bool , n : String };
 
 typedef DynamicToken = { v : Bool };
 
