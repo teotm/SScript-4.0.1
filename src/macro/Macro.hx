@@ -18,9 +18,14 @@ import sys.io.File;
 
 using StringTools;
 
+@:access(tools.ClassTools)
 class Macro
 {
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 0, 0);
+	#if !macro
+	public static final allClassesAvailable:Map<String, Class<Dynamic>> = tools.ClassTools.names.copy();
+	#end
+
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 0);
 
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());
@@ -46,6 +51,8 @@ class Macro
 	macro
 	public static function initiateMacro() 
 	{
+		final defines = Context.getDefines();
+
 		var long:String = '-------------------------------------------------------------------';
 		log('------------------------SScript ${VERSION} Macro------------------------');
 
@@ -54,18 +61,25 @@ class Macro
 
 		log('Checking version...');
 		
-		#if CHECK_SUPERLATIVE
+		#if (haxe >= "4.3.2")
 		var v = VERSION.checkVer();
 
-		if (v)
+		if (v == null)
+		{
+			log('There was an error getting the latest version info, you may not have internet connection.');
+			log('Continuing...');
+		}
+		else if (v)
 			log('Done! You are using the latest SScript version!');
 		else if (!v)
 			log('You\'re using an outdated version of SScript (${VERSION}). Please update it to ${SScriptVer.newerVer}.');
 		#else
-		log('Done! You are using the latest SScript version!');
+		log('You are using the ${defines.get("haxe")} version of Haxe, SScript works best with Haxe 4.3.2. Consider updating Haxe.');
+		log('Continuing...');
 		#end
-
-		final defines = Context.getDefines();
+		
+		log(long);
+		log("");
 
 		#if sys
 		var pushedDefines:Array<String> = [];
@@ -104,8 +118,6 @@ class Macro
 
 		if (defines.get("dce") != "std")
 			Context.fatalError("SScript needs DCE to be std to work properly", (macro null).pos);
-
-		log(long);
 		
 		return macro {}
 	}

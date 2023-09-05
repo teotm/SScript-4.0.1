@@ -323,7 +323,7 @@ class Printer {
 			add(" : ");
 			addType(t);
 			add(")");
-		case EImport(n, _, asIdent , _ ):
+		case EImport(n, _, asIdent ):
 			var n = Type.getClassName(n);
 			if( n == null )
 				return;
@@ -361,7 +361,7 @@ class Printer {
 			case EUnknownVariable(v): "Unknown variable: "+v;
 			case EInvalidIterator(v): "Invalid iterator: "+v;
 			case EInvalidOp(op): "Invalid operator: "+op;
-			case EInvalidAccess(f): "Tried to access a null variable " + "\"" + f + "\"";
+			case EInvalidAccess(f): "Tried to access a null variable " + f;
 			case ECustom(msg): msg;
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
 			case EUnmatchingType(v,t,n): t + " should be " + v + "" + if(n != null) ' for variable "$n".' else ".";
@@ -369,7 +369,6 @@ class Printer {
 			case EUnknownIdentifier(v): "Unknown identifier: "  + v + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
-			case EExpectedField(v): "Expected \"public\" or \"private\" for " + v + ", couldn't get any.";
 			case EFunctionAssign(f): "Cannot rebind this method (" + f + ") : please use 'dynamic' before method declaration";
 		};
 		#if hscriptPos

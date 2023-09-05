@@ -126,23 +126,19 @@ class Tools {
 		return ctToType(ct);
 	}
 
-	public static function compatibleWithEachOther(v,v2):Bool{
-		if (Interp.isMap(v) && Interp.isMap(v2))
+	public static function compatibleWithEachOther(v : Dynamic , v2 : Dynamic):Bool{
+		if( Interp.isMap(v) && Interp.isMap(v2) )
+			return true;
+		if( Interp.isMap(v) && v2 == "Array" )
 			return true;
 		
 		var c = Type.resolveClass(v), c1 = Type.resolveClass(v2);
-		if (c!=null&&c1!=null)
+		if( c!=null && c1!=null )
 		{
 			var superC = Type.getSuperClass(c);
 			if (superC!=null&&c1 == superC)
 				return true;
 		}
-		/*if (c!=null&&c1!=null)
-		{
-			var superC = Type.getSuperClass(c1);
-			if (superC!=null&&c == superC)
-				return true;
-		}*/
 		var chance:Bool = v=="Float"&&v2=="Int";
 		var secondChance:Bool = v=="Dynamic"||v2=="null";
 		return chance||secondChance;

@@ -58,11 +58,6 @@ Add this to `build.hxml` to add SScript to your Haxe build.
 
 Flag `hscriptPos` is needed for error handling at runtime. It is optional but definitely recommended.
 
-## Version checking
-SScript can check if you are using the latest version of it.
-
-It is disabled by default, but you can enable it with defining `CHECK_SUPERLATIVE`.
-
 ## Usage
 To use SScript, you will need a file or a script. Using a file is recommended.
 
@@ -151,11 +146,39 @@ class Main
 
 ------------
 
+## Setting Enum Abstracts
+Since version 5.1.0, SScript can set enum abstracts to its variables.
+
+Enum abstracts do not exist during runtime, so SScript can convert them 
+to Dynamic type and set to its variables.
+
+Example usage:
+```haxe
+import tea.SScript;
+enum abstract EnumAbst(Float)
+{
+	var VALUE = 0;
+	var VALUE2 = 0.1;
+}
+
+class Main
+{
+	static function main()
+	{
+		var script:SScript = new SScript();
+		script.setEnumAbstract(tools.EnumAbstractTools.enumAbstractToDynamic(EnumAbst), "EnumAbst");
+		script.doString("return EnumAbst.VALUE + EnumAbst.VALUE2;");
+		trace(script.returnValue); // 0.1
+	}
+}
+```
+------------
+
 ## Extending SScript
 You can create a class extending SScript to customize it better.
 ```haxe
 class SScriptEx extends tea.SScript
-{
+{  
 	override function preset():Void
 	{
 		super.preset();

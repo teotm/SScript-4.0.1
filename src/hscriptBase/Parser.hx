@@ -80,7 +80,7 @@ class Parser {
 	/**
 		allow haxe metadata declarations
 	**/
-	public var allowMetadata : Bool = false;
+	public var allowMetadata : Bool = true;
 
 	/**
 		resume from parsing errors (when parsing incomplete code, during completion for example)
@@ -597,6 +597,8 @@ class Parser {
 		var p1 = tokenMin;
 		#end
 		return switch( id ) {
+		case "enum":
+			return null;
 		case "if":
 			ensure(TPOpen);
 			var cond = parseExpr();
@@ -621,33 +623,6 @@ class Parser {
 			var tk = token();
 			var getter = null;
 			var setter = null;
-			if(tk==TPOpen)
-			{
-				var tk2 = token();
-				var nulls=["default","null","get","set"];
-				switch(tk2){
-					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
-					getter = s;
-					default: unexpected(tk2);
-				}
-				var tk2 = token();
-				switch(tk2){
-					case TComma://allowed
-					default: unexpected(tk2);
-				}
-				var tk2 = token();
-				switch(tk2){
-					case TId(s):if(!nulls.copy().contains(""+s))unexpected(tk2);
-					setter = s;
-					default: unexpected(tk2);
-				}
-				var tk2 = token();
-				switch(tk2){
-					case TPClose://allowed
-					default: unexpected(tk2);
-				}
-				tk = token();
-			}
 			var tp = null;
 			if( tk == TDoubleDot && allowTypes ) {
 				tp = parseType();
@@ -657,13 +632,8 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
-				@:privateAccess 
-				if(tp!=null) switch (tp) {
-					case CTPath(p,pr):
-						
-					default:
-				}
 				case TComma | TStatement: push(tk);
+				#if static
 				if (tp != null) switch(tp){
 					case CTPath(p,pr):
 					switch(p[0]){
@@ -676,9 +646,10 @@ class Parser {
 					}
 					default:
 				}
+				#end
 				default: unexpected(tk);
 			}
-			mk(EVar(ident,tp,e,[getter,setter,]),p1,(e == null) ? tokenMax : pmax(e));
+			mk(EVar(ident,tp,e,null),p1,(e == null) ? tokenMax : pmax(e));
 		case "final":
 			var ident = getIdent();
 			var tk = token();
@@ -691,12 +662,6 @@ class Parser {
 			switch (tk)
 			{
 				case TOp("="): e = parseExpr();
-				/*if(tp!=null) switch (tp) {
-					case CTPath(p,pr):
-						@:privateAccess if(p[0]!=Tools.getType(interp.expr(e)) && interp.expr(e) != null)
-						error(EUnmatcingType(Tools.getType(interp.expr(e)),p[0]));
-					default:
-				}*/
 				case TComma | TStatement: push(tk);
 				switch(tp){
 					case CTPath(p,pr):
@@ -739,9 +704,8 @@ class Parser {
 		case "continue": mk(EContinue);
 		case "else": unexpected(TId(id));
 		case "dynamic":
-			var maybe=maybe(TId("function"));
-			if (!maybe)
-				error(EExpectedField('function'));
+			var tk = token();
+			if( !Type.enumEq(tk,TId("function")) ) unexpected(tk);
 			parseStructure("function", {v: true});
 		case "function":
 			var tk = token();
@@ -759,6 +723,8 @@ class Parser {
 			mk(EReturn(e),p1,if( e == null ) tokenMax else pmax(e));
 		case "new":
 			var a = new Array();
+			var subIds = new Array();
+
 			a.push(getIdent());
 			while( true ) {
 				var tk = token();
@@ -767,13 +733,28 @@ class Parser {
 					a.push(getIdent());
 				case TPOpen:
 					break;
+				case TOp("<"):
+					while( true ) {
+						var t = token();
+						switch t {
+							case TId(s): subIds.push(s);
+							case TComma: t = token();
+								switch t {
+									case TId(s): subIds.push(s);
+									case TOp(">"): break;
+									case _: unexpected(t);
+								}
+							case TOp(">"): break;
+							case _: unexpected(t);
+						}
+					}
 				default:
 					unexpected(tk);
 					break;
 				}
 			}
 			var args = parseExprList(TPClose);
-			mk(ENew(a.join("."),args),p1);
+			mk(ENew(a.join("."),args,subIds),p1);
 		case "throw":
 			var e = parseExpr();
 			mk(EThrow(e),p1,pmax(e));
@@ -900,8 +881,11 @@ class Parser {
 					unexpected(t);
 				}
 			}
-
-			/*if(path.contains('*'))throw new Exception('"*" is not supported!');*/
+			
+			if( isStar )
+			{
+				return mk(EImportStar(path.join('.')));
+			}
 
 			var anPath:Array < String > = [];
 			var int : Int = 0;
@@ -940,9 +924,9 @@ class Parser {
 			var maybe=maybe(TId("as"));
 			var asIdent:String=null;
 
-			if(maybe)asIdent=getIdent();
+			if(maybe) asIdent=getIdent();
 
-			if(maybe&&(""+asIdent=="null"||""+asIdent=="")&&isStar)
+			if(maybe&&(asIdent==null||asIdent==""))
 				unexpected(TId("as"));
 
 			var usedAs = maybe&&''+asIdent!="null";
@@ -966,14 +950,7 @@ class Parser {
 				property = Reflect.getProperty(property, cl);
 				if(usedAs)
 					cl=asIdent;
-				var ps = new Map();
-				if(isStar){
-					var prop=Reflect.fields(property);
-					for(eprop in prop)
-						ps[eprop] = Reflect.field(property, eprop);
-				}
-				
-				EImport( property, cl , usedAs ? asIdent : null, ps );
+				EImport( property, cl , usedAs ? asIdent : null );
 			}
 			else 
 			{
@@ -988,46 +965,17 @@ class Parser {
 				}
 				else 
 				{
-					if(path[0].startsWith(path[0].substring(0, 1).toLowerCase()))
-					{
-						eclass = Type.resolveClass(anPath[0]);
-						if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
-						var prop = Reflect.getProperty(eclass, path[0]);
-						eclass = prop;
-						cl = path[0];
-						og = cl;
-						if(usedAs)
-							cl=asIdent;
-					}
-					if (path[0].startsWith(path[0].substring(0, 1).toUpperCase()))
-					{
-						try{
-							eclass = Type.resolveClass(anPath[0]);
-							if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
-							var prop = Reflect.getProperty(eclass, path[0]);
-							eclass = prop;
-							cl = path[0];
-							og = cl;
-							if(usedAs)
-								cl=asIdent;
-						}
-						catch(e){
-							try{
-								cl = path[0];
-								og = cl;
-								eclass = Type.resolveClass(cl);
-								if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
-								if(usedAs)
-									cl=asIdent;
-							}
-							catch(ec){
-								throw [e,ec];
-							}
-						}
-					}
+					eclass = Type.resolveClass(anPath[0]);
+					if(eclass==null)eclass=Type.resolveEnum(anPath[0]);
+					var prop = Reflect.getProperty(eclass, path[0]);
+					eclass = prop;
+					cl = path[0];
+					og = cl;
+					if(usedAs)
+						cl=asIdent;
 				}
 			}
-			mk(EImport( eclass , cl , usedAs ? asIdent : null));
+			mk(EImport( eclass , cl , usedAs ? asIdent : null ));
 		case 'package':
 			var path = [getIdent(false)];
 			if (!path.contains(null))
@@ -1834,16 +1782,13 @@ class Parser {
 					return TOp("==");
 				else if ( char == '>'.code )
 					return TOp("=>");
-				char=readChar();
-				if ( char == '='.code )
-						return TOp("===");
 				
 				this.char = char;
 				return TOp("=");
 			case '@'.code:
 				char = readChar();
 				if( idents[char] || char == ':'.code ) {
-					var id = String.fromCharCode(char);
+					var id = char == ':'.code ? "" : String.fromCharCode(char);
 					while( true ) {
 						char = readChar();
 						if( !idents[char] ) {

@@ -11,7 +11,7 @@ interface SScriptInterface<T:SScript>
     function setClassString(cl:String):T;
     function unset(key:String):T;
     function clear():T;
-    function call(func:String, ?args:Array<Dynamic>, ?className:String):SCall;
+    function call(func:String, ?args:Array<Dynamic>):SCall;
 }
 
 interface SScriptGroupInterface<T:SScript> extends SScriptInterface<T>
@@ -246,7 +246,7 @@ class SScriptTypedGroup<T:SScript> implements SScriptGroupInterface<T>
 
         Return value will be null if no members has one. Otherwise, it will be first not null return value.
 	**/
-	public function call(func:String, ?args:Array<Dynamic>, ?className:String):SCall 
+	public function call(func:String, ?args:Array<Dynamic>):SCall 
     {
         if (_destroyed)
             return null;
@@ -268,7 +268,7 @@ class SScriptTypedGroup<T:SScript> implements SScriptGroupInterface<T>
 
         for (i in members) 
             if (i != null)
-                calls.push(i.call(func, args, className));
+                calls.push(i.call(func, args));
 
         var checkReturns:Bool = true;
         for (i in calls) 

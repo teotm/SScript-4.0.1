@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "classPath": "src/",
-  "releasenote": "Legacy Update",
+  "releasenote": "Enum abstract support, star support for import, Map support improvements and bug fixes",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }

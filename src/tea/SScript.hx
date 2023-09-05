@@ -71,7 +71,7 @@ class SScript implements SScriptInterface<SScript>
 	/**
 		SScript version abstract, used for version checker.  
 	**/
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 0, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 0);
 	
 	/**
 		If not null, assigns all scripts to check or ignore type declarations.
@@ -304,7 +304,6 @@ class SScript implements SScriptInterface<SScript>
 				else 
 					trace('SScript instance created in ${lastReportedTime}s');
 			}
-
 		}
 		catch (e)
 		{
@@ -336,6 +335,8 @@ class SScript implements SScriptInterface<SScript>
 
 		if (script != null && script.length > 0)
 		{
+			resetInterp();
+			
 			try 
 			{
 				var expr:Expr = parser.parseString(script #if hscriptPos, origin #end);
@@ -463,6 +464,32 @@ class SScript implements SScriptInterface<SScript>
 		}
 		return this;
 	}
+	
+	/**
+		Sets an enum abstract to this script.
+
+		Since abstracts do not exist in runtime, this function turns enum abstracts to Dynamic and sets it to this script.
+	
+		@param enumAbs Enum abstract, `tools.EnumAbstractTools.enumAbstractToDynamic` must be used for this parameter.
+		@param absName Abstract's name.
+		
+		@return Returns this instance for chaining.
+	**/
+	public function setEnumAbstract(enumAbs, absName:String):SScript
+	{
+		if (absName == null || absName.length < 1 || BlankReg.match(absName))
+			return this;
+
+		var v:Dynamic = {};
+		var map:Map<String, Dynamic> = cast enumAbs;
+		for (i => k in map) 
+		{
+			Reflect.setField(v, i, k);
+		}
+		set(absName, v);
+
+		return this;
+	}
 
 	/**
 		Returns the local variables in this script as a fresh map.
@@ -546,10 +573,9 @@ class SScript implements SScriptInterface<SScript>
 
 		@param func Function name in script file. 
 		@param args Arguments for the `func`. If the function does not require arguments, leave it null.
-		@param className If provided, searches the specific class. If the function is not found, other classes will be searched.
 		@return Returns an unique structure that contains called function, returned value etc. Returned value is at `returnValue`.
 	**/
-	public function call(func:String, ?args:Array<Dynamic>, ?className:String):SCall
+	public function call(func:String, ?args:Array<Dynamic>):SCall
 	{
 		if (_destroyed)
 			return null;
@@ -734,6 +760,18 @@ class SScript implements SScriptInterface<SScript>
 		#end
 	}
 
+	function resetInterp():Void
+	{
+		if (_destroyed)
+			return;
+		if (interp == null)
+			return;
+
+		interp.locals = #if haxe3 new Map() #else new Hash() #end;
+		while (interp.declared.length > 0)
+			interp.declared.pop();
+	}
+
 	function doFile(scriptPath:String):Void
 	{
 		parsingException = null;
@@ -813,7 +851,9 @@ class SScript implements SScriptInterface<SScript>
 			if (FileSystem.exists(string))
 			{
 				scriptFile = string;
+				#if hscriptPos
 				origin = string;
+				#end
 				string = File.getContent(string);
 			}
 			#end
@@ -830,6 +870,8 @@ class SScript implements SScriptInterface<SScript>
 
 			if (!active || interp == null)
 				return null;
+
+			resetInterp();
 
 			try
 			{	
