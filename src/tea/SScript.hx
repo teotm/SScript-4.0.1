@@ -26,7 +26,14 @@ using StringTools;
 
 typedef SCall =
 {
+	#if sys
+	/**
+		Script's file name. Will be null if the script is not from a file. 
+		
+		Also not available on JavaScript.
+	**/
 	public var ?fileName(default, null):String;
+	#end
 	
 	/**
 		If call's been successful or not. 
@@ -71,7 +78,7 @@ class SScript implements SScriptInterface<SScript>
 	/**
 		SScript version abstract, used for version checker.  
 	**/
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 1);
 	
 	/**
 		If not null, assigns all scripts to check or ignore type declarations.
@@ -94,12 +101,14 @@ class SScript implements SScriptInterface<SScript>
 		Variables in this map will be set to every SScript instance. 
 	**/
 	#end
-	public static var globalVariables:Map<String, Dynamic> = [];
+	public static var globalVariables:SScriptGlobalMap = new SScriptGlobalMap();
 	
 	/**
 		Every created SScript will be mapped to this map. 
 	**/
 	public static var global(default, null):Map<String, SScript> = [];
+	
+	static var IDCount(default, null):Int = 0;
 
 	static var BlankReg(get, never):EReg;
 	
@@ -118,6 +127,11 @@ class SScript implements SScriptInterface<SScript>
 		This is not to be messed up with function's return value.
 	**/
 	public var returnValue(default, null):Null<Dynamic>;
+
+	/**
+		ID for this script, used for scripts with no script file.
+	**/
+	public var ID(default, null):Null<Int> = null;
 
 	/**
 		Whether the type checker should be enabled.
@@ -286,9 +300,13 @@ class SScript implements SScriptInterface<SScript>
 		if (preset)
 			this.preset();
 
-		for (i => k in globalVariables)
-			if (i != null)
-				set(i, k);
+		var f = Reflect.fields(globalVariables.self);
+		for (i in f)
+		{
+			var r = globalVariables.get(i);
+			if (i != null && r != null)
+				set(i, r);
+		}
 
 		try 
 		{
@@ -578,7 +596,12 @@ class SScript implements SScriptInterface<SScript>
 	public function call(func:String, ?args:Array<Dynamic>):SCall
 	{
 		if (_destroyed)
-			return null;
+			return {
+				exceptions: [new SScriptException(new Exception((if (scriptFile != null && scriptFile.length > 0) scriptFile else "SScript instance") + " is destroyed."))],
+				calledFunction: func,
+				succeeded: false,
+				returnValue: null
+			};
 
 		if (!active)
 			return {
@@ -597,14 +620,10 @@ class SScript implements SScriptInterface<SScript>
 			succeeded: false,
 			returnValue: null
 		}
+		#if sys
 		if (scriptFile != null && scriptFile.length > 0)
-			caller = {
-				fileName: scriptFile,
-				exceptions: [],
-				calledFunction: func,
-				succeeded: false,
-				returnValue: null
-			}
+			Reflect.setField(caller, "fileName", scriptFile);
+		#end
 		if (args == null)
 			args = new Array();
 
@@ -665,14 +684,10 @@ class SScript implements SScriptInterface<SScript>
 					succeeded: true,
 					returnValue: functionField
 				};
+				#if sys
 				if (scriptFile != null && scriptFile.length > 0)
-					caller = {
-						fileName: scriptFile,
-						exceptions: caller.exceptions,
-						calledFunction: func,
-						succeeded: true,
-						returnValue: functionField
-					};
+					Reflect.setField(caller, "fileName", scriptFile);
+				#end
 			}
 			catch (e)
 			{
@@ -744,6 +759,7 @@ class SScript implements SScriptInterface<SScript>
 		setClass(Date);
 		setClass(DateTools);
 		setClass(Math);
+		setClass(Reflect);
 		setClass(Std);
 		setClass(SScript);
 		setClass(StringTools);
@@ -780,8 +796,13 @@ class SScript implements SScriptInterface<SScript>
 			return;
 
 		if (scriptPath == null || scriptPath.length < 1 || BlankReg.match(scriptPath))
+		{
+			ID = IDCount + 1;
+			IDCount++;
+			global[Std.string(ID)] = this;
 			return;
-		
+		}
+
 		if (scriptPath != null && scriptPath.length > 0)
 		{
 			#if sys
@@ -877,8 +898,18 @@ class SScript implements SScriptInterface<SScript>
 			{	
 				script = string;
 
-				if (script != null && script.length > 0)
+				if (scriptFile != null && scriptFile.length > 0)
+				{
+					if (ID != null)
+						global.remove(Std.string(ID));
+					global[scriptFile] = this;
+				}
+				else if (script != null && script.length > 0)
+				{
+					if (ID != null)
+						global.remove(Std.string(ID));
 					global[script] = this;
+				}
 
 				var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
 				var r = interp.execute(expr);
@@ -1031,6 +1062,9 @@ class SScript implements SScriptInterface<SScript>
 
 		clear();
 
+		#if hscriptPos
+		customOrigin = null;
+		#end
 		parser = null;
 		interp = null;
 		script = null;
@@ -1039,6 +1073,7 @@ class SScript implements SScriptInterface<SScript>
 		notAllowedClasses = null;
 		lastReportedCallTime = -1;
 		lastReportedTime = -1;
+		ID = null;
 		parsingException = null;
 		returnValue = null;
 		_destroyed = true;

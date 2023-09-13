@@ -13,7 +13,9 @@ import tea.backend.SScriptVer;
 import tea.backend.crypto.Base32;
 
 #if sys
+import sys.FileSystem;
 import sys.io.File;
+import sys.io.Process;
 #end
 
 using StringTools;
@@ -25,11 +27,12 @@ class Macro
 	public static final allClassesAvailable:Map<String, Class<Dynamic>> = tools.ClassTools.names.copy();
 	#end
 
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 1);
 
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());
 	public static var definePath(get, never):String;
+	public static var settingsPath(get, never):String;
 	#end
 
 	static var credits:Array<String> = [
@@ -72,7 +75,53 @@ class Macro
 		else if (v)
 			log('Done! You are using the latest SScript version!');
 		else if (!v)
+		{
 			log('You\'re using an outdated version of SScript (${VERSION}). Please update it to ${SScriptVer.newerVer}.');
+			#if sys 
+			if (!FileSystem.exists(settingsPath))
+			{
+				log("Would you like to update SScript? This will abort the current compilation process.");
+				Sys.print("(Y/N/D to never show this again): ");
+				var r = Sys.stdin().readLine();
+				if (["yes", "y"].contains(r.toLowerCase().trim()))
+				{
+					var p = new Process("haxelib remove SScript && haxelib install SScript");
+					while (true) 
+					{
+						var o = p.stdout.readLine();
+						if (o.trim() == "Done")
+						{
+							p.close();
+							break;
+						}
+					}
+					p = null;
+					
+					log("");
+					log("Done.");
+					log(long);
+					Sys.exit(1);
+				}
+				else if (["no", "n"].contains(r.toLowerCase().trim()))
+				{
+					log("");
+					log("Continuing...");
+				}
+				else if (r.toLowerCase().trim() == 'd')
+				{
+					log("");
+					log("Updater will never be shown again. Continuing...");
+					File.saveContent(settingsPath, "1");
+				}
+				else 
+				{
+					log("Invalid answer given, aborting.");
+					log(long);
+					Sys.exit(1);
+				}
+			}
+			#end
+		}
 		#else
 		log('You are using the ${defines.get("haxe")} version of Haxe, SScript works best with Haxe 4.3.2. Consider updating Haxe.');
 		log('Continuing...');
@@ -118,7 +167,8 @@ class Macro
 
 		if (defines.get("dce") != "std")
 			Context.fatalError("SScript needs DCE to be std to work properly", (macro null).pos);
-		
+
+		Compiler.define('loop_unroll_max_cost', '25'); // Haxe will try to unroll big loops which may cause memory leaks, so max cost is downgraded to 25 from 250
 		return macro {}
 	}
 
@@ -141,6 +191,16 @@ class Macro
 			env += '/';
 
 		return env + 'defines.cocoa';
+	}
+	static function get_settingsPath():String 
+	{
+		var env:String = if (isWindows) Sys.getEnv('USERPROFILE') else Sys.getEnv('HOME');
+		if (isWindows && !env.endsWith('\\'))
+			env += '\\';
+		else if (!isWindows && !env.endsWith('/'))
+			env += '/';
+
+		return env + 'settings.cocoa';
 	}
 	#end
 }
