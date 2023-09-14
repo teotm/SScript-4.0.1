@@ -777,17 +777,22 @@ class Parser {
 			var ce = parseExpr();
 			mk(ETry(e, cname, t, ce), p1, pmax(ce));
 		case "switch":
-			var e = parseExpr();
+			var parentExpr = parseExpr();
 			var def = null, cases = [];
 			ensure(TBrOpen);
 			while( true ) {
 				var tk = token();
 				switch( tk ) {
 				case TId("case"):
-					var c = { values : [], expr : null };
+					var c = { values : [], expr : null , ifExpr : null };
 					cases.push(c);
 					while( true ) {
 						var e = parseExpr();
+						switch Tools.expr(e) {
+							case EBinop("|", e1, e2):
+								e = mk(ESwitchBinop(parentExpr, e1, e2));
+							case _:
+						}
 						c.values.push(e);
 						tk = token();
 						switch( tk ) {
@@ -795,6 +800,16 @@ class Parser {
 							// next expr
 						case TDoubleDot:
 							break;
+						case TId("if"):
+							var e = parseExpr();
+							c.ifExpr = e;
+							switch tk = token() {
+								case TComma:
+								case TDoubleDot: break;
+								case _: 
+									unexpected(tk);
+									break;
+							}
 						default:
 							unexpected(tk);
 							break;
@@ -819,6 +834,15 @@ class Parser {
 						mk(EBlock([]), tokenMin, tokenMin);
 					else
 						mk(EBlock(exprs), pmin(exprs[0]), pmax(exprs[exprs.length - 1]));
+
+					for( i in c.values )
+					{
+						switch Tools.expr(i) {
+							case EIdent("_",_):
+								def = c.expr;
+							case _:
+						}
+					}
 				case TId("default"):
 					if( def != null ) unexpected(tk);
 					ensure(TDoubleDot);
@@ -848,7 +872,7 @@ class Parser {
 					break;
 				}
 			}
-			mk(ESwitch(e, cases, def), p1, tokenMax);
+			mk(ESwitch(parentExpr, cases, def), p1, tokenMax);
 		
 		case 'using':
 			var path = getIdent();

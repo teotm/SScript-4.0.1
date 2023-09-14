@@ -78,7 +78,7 @@ class SScript implements SScriptInterface<SScript>
 	/**
 		SScript version abstract, used for version checker.  
 	**/
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 1);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 2, 0);
 	
 	/**
 		If not null, assigns all scripts to check or ignore type declarations.
@@ -300,12 +300,10 @@ class SScript implements SScriptInterface<SScript>
 		if (preset)
 			this.preset();
 
-		var f = Reflect.fields(globalVariables.self);
-		for (i in f)
+		for (i => k in globalVariables)
 		{
-			var r = globalVariables.get(i);
-			if (i != null && r != null)
-				set(i, r);
+			if (i != null)
+				set(i, k);
 		}
 
 		try 

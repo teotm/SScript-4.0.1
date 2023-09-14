@@ -27,7 +27,7 @@ class Macro
 	public static final allClassesAvailable:Map<String, Class<Dynamic>> = tools.ClassTools.names.copy();
 	#end
 
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 1, 1);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 2, 0);
 
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());

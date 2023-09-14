@@ -534,6 +534,14 @@ class Interp {
 			return v;
 		case EField(e,f):
 			return get(expr(e),f);
+		case ESwitchBinop(p, e1, e2):
+			var parent = expr(p);
+			var e1 = expr(e1), e2 = expr(e2);
+			if( parent == e1 )
+				return e1;
+			else if( parent == e2 )
+				return e2;
+			return null;
 		case EBinop(op,e1,e2):
 			var fop = binops.get(op);
 			if( fop == null ) error(EInvalidOp(op));
@@ -841,10 +849,12 @@ class Interp {
 			var match = false;
 			for( c in cases ) {
 				for( v in c.values )
-					if( expr(v) == val ) {
+				{
+					if( ( !Type.enumEq(Tools.expr(v),EIdent("_",false)) && expr(v) == val ) && ( c.ifExpr == null || expr(c.ifExpr) == true ) ) {
 						match = true;
 						break;
 					}
+				}
 				if( match ) {
 					val = expr(c.expr);
 					break;

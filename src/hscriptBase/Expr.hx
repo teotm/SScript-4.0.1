@@ -51,6 +51,7 @@ enum Expr {
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String );
 	EBinop( op : String, e1 : Expr, e2 : Expr );
+	ESwitchBinop( p : Expr , e1 : Expr , e2 : Expr );
 	EUnop( op : String, prefix : Bool, e : Expr );
 	ECall( e : Expr, params : Array<Expr> );
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
@@ -69,7 +70,7 @@ enum Expr {
 	ETry( e : Expr, v : String, t : Null<CType>, ecatch : Expr );
 	EObject( fl : Array<{ name : String, e : Expr }> );
 	ETernary( cond : Expr, e1 : Expr, e2 : Expr );
-	ESwitch( e : Expr, cases : Array<{ values : Array<Expr>, expr : Expr }>, ?defaultExpr : Expr);
+	ESwitch( e : Expr, cases : Array<{ values : Array<Expr>, expr : Expr , ifExpr : Expr }>, ?defaultExpr : Expr);
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
 	EImport( i : Dynamic, c : String , ?asIdent : String );

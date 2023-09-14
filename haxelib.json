@@ -4,9 +4,9 @@
   "license": "Apache",
   "tags": ["hscript", "sscript"],
   "description": "An easy-to-use Haxe Script tool for all targets.",
-  "version": "5.1.1",
+  "version": "5.2.0",
   "classPath": "src/",
-  "releasenote": "SScript Updater Tool added, global variables rework and bug fixes",
+  "releasenote": "Rewrote global variables and switch improvements",
   "contributors": ["TheWorldMachinima", "TahirRollingArch"],
   "dependencies": {
   }
