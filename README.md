@@ -1,3 +1,4 @@
+**Discontinued since September 18, 2023.**
 
 ![SScriptLogo](https://github.com/TheWorldMachinima/SScript/assets/114953508/01fba6f6-caeb-4aa7-af4e-58b9d98984fc)
 
