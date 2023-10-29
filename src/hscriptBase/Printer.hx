@@ -114,7 +114,7 @@ class Printer {
 			add("??NULL??");
 			return;
 		}
-		switch( #if hscriptPos e.e #else e #end ) {
+		switch( e.e ) {
 		case EConst(c):
 			switch( c ) {
 			case CInt(i): add(i);
@@ -164,7 +164,7 @@ class Printer {
 		case ECall(e, args):
 			if( e == null )
 				expr(e);
-			else switch( #if hscriptPos e.e #else e #end ) {
+			else switch( e.e ) {
 			case EField(_), EIdent(_), EConst(_):
 				expr(e);
 			default:
@@ -352,7 +352,7 @@ class Printer {
 	}
 
 	public static function errorToString( e : Expr.Error ) {
-		var message = switch( #if hscriptPos e.e #else e #end ) {
+		var message = switch( e.e ) {
 			case EInvalidChar(c): "Invalid character: '"+(StringTools.isEof(c) ? "EOF" : String.fromCharCode(c))+"' ("+c+")";
 			case EUnexpected(s): "Unexpected " + s;
 			case EUnterminatedString: "Unterminated string";
@@ -371,11 +371,7 @@ class Printer {
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
 			case EFunctionAssign(f): "Cannot rebind this method (" + f + ") : please use 'dynamic' before method declaration";
 		};
-		#if hscriptPos
 		return e.origin + ":" + e.line + ": " + message;
-		#else
-		return message;
-		#end
 	}
 
 

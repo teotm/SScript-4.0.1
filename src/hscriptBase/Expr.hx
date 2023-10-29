@@ -30,7 +30,6 @@ enum Const {
 	#end
 }
 
-#if hscriptPos
 typedef Expr = {
 	var e : ExprDef;
 	var pmin : Int;
@@ -38,11 +37,8 @@ typedef Expr = {
 	var origin : String;
 	var line : Int;
 }
+
 enum ExprDef {
-#else
-typedef ExprDef = Expr;
-enum Expr {
-#end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
 	EVar( n : String, ?t : CType, ?e : Expr , ?g : Array<String> );
@@ -95,7 +91,6 @@ enum CType {
 	CTNamed( n : String, t : CType );
 }
 
-#if hscriptPos
 class Error {
 	public var e : ErrorDef;
 	public var pmin : Int;
@@ -114,9 +109,6 @@ class Error {
 	}
 }
 enum ErrorDef {
-#else
-enum Error {
-#end
 	EDuplicate( v : String );
 	EInvalidChar( c : Int );
 	EUnexpected( s : String );

@@ -8,23 +8,17 @@ import haxe.Timer;
 import hscriptBase.*;
 import hscriptBase.Expr;
 
-#if openflPos
-import openfl.Assets;
-#end
-
 #if sys
 import sys.FileSystem;
 import sys.io.File;
 #end
-
-import tea.SScriptGroup;
 
 import tea.backend.*;
 import tea.backend.crypto.Base32;
 
 using StringTools;
 
-typedef SCall =
+typedef TeaCall =
 {
 	#if sys
 	/**
@@ -63,7 +57,7 @@ typedef SCall =
 @:access(hscriptBase.Interp)
 @:access(hscriptBase.Parser)
 @:keepSub
-class SScript implements SScriptInterface<SScript>
+class SScript
 {
 	/**
 		Ignore return value 
@@ -90,17 +84,9 @@ class SScript implements SScriptInterface<SScript>
 	**/
 	public static var defaultDebug(default, set):Null<Bool> = #if debug true #else null #end;
 
-	#if openflPos
-	/**
-		Variables in this map will be set to every SScript instance. 
-
-		You need to clear this map at every state switch to avoid memory leaks!
-	**/
-	#else
 	/**
 		Variables in this map will be set to every SScript instance. 
 	**/
-	#end
 	public static var globalVariables:SScriptGlobalMap = new SScriptGlobalMap();
 	
 	/**
@@ -112,14 +98,12 @@ class SScript implements SScriptInterface<SScript>
 
 	static var BlankReg(get, never):EReg;
 	
-	#if hscriptPos
 	/**
 		This is a custom origin you can set.
 
 		If not null, this will act as file path.
 	**/
 	public var customOrigin(default, set):String;
-	#end
 
 	/**
 		Script's own return value.
@@ -269,10 +253,6 @@ class SScript implements SScriptInterface<SScript>
 				defines["true"] = "1";
 				defines["haxe"] = "1";
 				defines["sys"] = "1";
-
-				#if hscriptPos
-				defines["hscriptPos"] = "1";
-				#end
 			}
 		}
 		#else
@@ -281,10 +261,6 @@ class SScript implements SScriptInterface<SScript>
 
 		defines["true"] = "1";
 		defines["haxe"] = "1";
-
-		#if hscriptPos
-		defines["hscriptPos"] = "1";
-		#end
 		#end
 
 		if (defaultTypeCheck != null)
@@ -340,14 +316,14 @@ class SScript implements SScriptInterface<SScript>
 		if (interp == null || !active)
 			return;
 
-		var origin:String = #if hscriptPos {
+		var origin:String = {
 			if (customOrigin != null && customOrigin.length > 0)
 				customOrigin;
 			else if (scriptFile != null && scriptFile.length > 0)
 				scriptFile;
 			else 
 				"SScript";
-		} #else null #end;
+		};
 
 		if (script != null && script.length > 0)
 		{
@@ -355,7 +331,7 @@ class SScript implements SScriptInterface<SScript>
 			
 			try 
 			{
-				var expr:Expr = parser.parseString(script #if hscriptPos, origin #end);
+				var expr:Expr = parser.parseString(script, origin);
 				var r = interp.execute(expr);
 				returnValue = r;
 			}
@@ -480,33 +456,43 @@ class SScript implements SScriptInterface<SScript>
 		}
 		return this;
 	}
-	
-	/**
-		Sets an enum abstract to this script.
 
-		Since abstracts do not exist in runtime, this function turns enum abstracts to Dynamic and sets it to this script.
-	
-		@param enumAbs Enum abstract, `tools.EnumAbstractTools.enumAbstractToDynamic` must be used for this parameter.
-		@param absName Abstract's name.
+	/**
+		A special object is the object that'll get checked if a variable is not found in a Tea.
 		
+		Special object can't be basic types like Int, String, Float, Array and Bool.
+
+		Instead, use it if you have a state instance.
+		@param obj The special object. 
+		@param includeFunctions If false, functions will be ignored in the special object. 
+		@param exclusions Optional array of fields you want it to be excluded.
 		@return Returns this instance for chaining.
 	**/
-	public function setEnumAbstract(enumAbs, absName:String):SScript
+	public function setSpecialObject(obj:Dynamic, ?includeFunctions:Bool = true, ?exclusions:Array<String>):SScript
 	{
-		if (absName == null || absName.length < 1 || BlankReg.match(absName))
+		if (_destroyed)
+			return null;
+		if (!active)
 			return this;
+		if (obj == null)
+			return this;
+		if (exclusions == null)
+			exclusions = new Array();
 
-		var v:Dynamic = {};
-		var map:Map<String, Dynamic> = cast enumAbs;
-		for (i => k in map) 
-		{
-			Reflect.setField(v, i, k);
-		}
-		set(absName, v);
+		var types:Array<Dynamic> = [Int, String, Float, Bool, Array];
+		for (i in types)
+			if (Std.isOfType(obj, i))
+				throw 'Special object cannot be ${i}';
 
+		if (interp.specialObject == null)
+			interp.specialObject = {obj: null , includeFunctions: null , exclusions: null };
+
+		interp.specialObject.obj = obj;
+		interp.specialObject.exclusions = exclusions.copy();
+		interp.specialObject.includeFunctions = includeFunctions;
 		return this;
 	}
-
+	
 	/**
 		Returns the local variables in this script as a fresh map.
 
@@ -591,7 +577,7 @@ class SScript implements SScriptInterface<SScript>
 		@param args Arguments for the `func`. If the function does not require arguments, leave it null.
 		@return Returns an unique structure that contains called function, returned value etc. Returned value is at `returnValue`.
 	**/
-	public function call(func:String, ?args:Array<Dynamic>):SCall
+	public function call(func:String, ?args:Array<Dynamic>):TeaCall
 	{
 		if (_destroyed)
 			return {
@@ -612,7 +598,7 @@ class SScript implements SScriptInterface<SScript>
 		var time:Float = Timer.stamp();
 
 		var scriptFile:String = if (scriptFile != null && scriptFile.length > 0) scriptFile else "";
-		var caller:SCall = {
+		var caller:TeaCall = {
 			exceptions: [],
 			calledFunction: func,
 			succeeded: false,
@@ -768,10 +754,6 @@ class SScript implements SScriptInterface<SScript>
 		setClass(FileSystem);
 		setClass(Sys);
 		#end
-		
-		#if openflPos
-		setClass(Assets);
-		#end
 	}
 
 	function resetInterp():Void
@@ -814,20 +796,6 @@ class SScript implements SScriptInterface<SScript>
 					scriptFile = "";
 					script = scriptPath;
 				}
-			#elseif openflPos
-				if (try Assets.exists(scriptPath) catch (e) false)
-				{
-					script = try Assets.getText(scriptPath) catch (e) null;
-					if (script == null)
-						script = scriptPath;
-					else
-						scriptFile = scriptPath;
-				}
-				else
-				{
-					scriptFile = "";
-					script = scriptPath;
-				}
 			#else
 				scriptFile = "";
 				script = scriptPath;
@@ -852,7 +820,7 @@ class SScript implements SScriptInterface<SScript>
 		@param origin Optional origin to use for this script, it will appear on traces.
 		@return Returns this instance for chaining. Will return `null` if failed.
 	**/
-	public function doString(string:String #if hscriptPos, ?origin:String #end):SScript
+	public function doString(string:String, ?origin:String):SScript
 	{
 		if (_destroyed)
 			return null;
@@ -870,14 +838,11 @@ class SScript implements SScriptInterface<SScript>
 			if (FileSystem.exists(string))
 			{
 				scriptFile = string;
-				#if hscriptPos
 				origin = string;
-				#end
 				string = File.getContent(string);
 			}
 			#end
 
-			#if hscriptPos
 			var og:String = origin;
 			if (og != null && og.length > 0)
 				customOrigin = og;
@@ -885,7 +850,6 @@ class SScript implements SScriptInterface<SScript>
 				og = customOrigin;
 			if (og == null || og.length < 1)
 				og = "SScript";
-			#end
 
 			if (!active || interp == null)
 				return null;
@@ -909,7 +873,7 @@ class SScript implements SScriptInterface<SScript>
 					global[script] = this;
 				}
 
-				var expr:Expr = parser.parseString(script #if hscriptPos , og #end);
+				var expr:Expr = parser.parseString(script, og);
 				var r = interp.execute(expr);
 				returnValue = r;
 			}
@@ -946,7 +910,7 @@ class SScript implements SScriptInterface<SScript>
 		return "[SScript SScript]";
 	}
 
-	#if (sys || openflPos)
+	#if (sys)
 	/**
 		Checks for scripts in the provided path and returns them as an array.
 
@@ -995,51 +959,8 @@ class SScript implements SScriptInterface<SScript>
 					list.push(new SScript(path + i));
 			}
 		}
-		#elseif openflPos
-		function readDirectory(path:String):Array<String> 
-		{
-			if (path.endsWith('/') && path.length > 1)
-				path = path.substring(0, path.length - 1);
-
-			var assetsLibrary:Array<String> = [];
-			for (folder in Assets.list().filter(list -> list.contains(path))) 
-			{
-				var myFolder:String = folder;
-				myFolder = myFolder.replace('${path}/', '');
-
-				if (myFolder.contains('/'))
-					myFolder = myFolder.replace(myFolder.substring(myFolder.indexOf('/'), myFolder.length), '');
-
-				myFolder = '$path/${myFolder}';
-				
-				if (!myFolder.startsWith('.') && !assetsLibrary.contains(myFolder))
-					assetsLibrary.push(myFolder);
-		
-				assetsLibrary.sort((a, b) -> ({
-					a = a.toUpperCase();
-					b = b.toUpperCase();
-					return a < b ? -1 : a > b ? 1 : 0;
-				}));
-			}
-		
-			return assetsLibrary;
-		}
-		for (i in readDirectory(path))
-		{
-			var hasExtension:Bool = false;
-			for (l in extensions)
-			{
-				if (i.endsWith(l))
-				{
-					hasExtension = true;
-					break;
-				}
-			}
-			if (hasExtension && Assets.exists(i))
-				list.push(new SScript(i));
-		}
 		#end
-
+		
 		return list;
 	}
 
@@ -1059,10 +980,9 @@ class SScript implements SScriptInterface<SScript>
 			global.remove(scriptFile);
 
 		clear();
+		resetInterp();
 
-		#if hscriptPos
 		customOrigin = null;
-		#end
 		parser = null;
 		interp = null;
 		script = null;
@@ -1106,7 +1026,6 @@ class SScript implements SScriptInterface<SScript>
 		return ~/^[\n\r\t]$/;
 	}
 
-	#if hscriptPos
 	function set_customOrigin(value:String):String
 	{
 		if (_destroyed)
@@ -1115,7 +1034,6 @@ class SScript implements SScriptInterface<SScript>
 		@:privateAccess parser.origin = value;
 		return customOrigin = value;
 	}
-	#end
 
 	static function set_defaultTypeCheck(value:Null<Bool>):Null<Bool> 
 	{

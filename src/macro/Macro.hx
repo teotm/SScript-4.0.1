@@ -20,19 +20,18 @@ import sys.io.Process;
 
 using StringTools;
 
-@:access(tools.ClassTools)
+@:access(hscriptBase.Tools)
 class Macro
 {
 	#if !macro
-	public static final allClassesAvailable:Map<String, Class<Dynamic>> = tools.ClassTools.names.copy();
+	public static final allClassesAvailable:Map<String, Class<Dynamic>> = hscriptBase.Tools.names.copy();
 	#end
 
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 2, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(7, 0, 0);
 
 	#if sys
 	public static var isWindows(default, null):Bool =  ~/^win/i.match(Sys.systemName());
 	public static var definePath(get, never):String;
-	public static var settingsPath(get, never):String;
 	#end
 
 	static var credits:Array<String> = [
@@ -78,47 +77,38 @@ class Macro
 		{
 			log('You\'re using an outdated version of SScript (${VERSION}). Please update it to ${SScriptVer.newerVer}.');
 			#if sys 
-			if (!FileSystem.exists(settingsPath))
+			log("Would you like to update SScript? This will abort the current compilation process.");
+			Sys.print("(Yes/No): ");
+			var r = Sys.stdin().readLine();
+			if (["yes", "y"].contains(r.toLowerCase().trim()))
 			{
-				log("Would you like to update SScript? This will abort the current compilation process.");
-				Sys.print("(Y/N/D to never show this again): ");
-				var r = Sys.stdin().readLine();
-				if (["yes", "y"].contains(r.toLowerCase().trim()))
+				var p = new Process("haxelib remove SScript && haxelib install SScript");
+				while (true) 
 				{
-					var p = new Process("haxelib remove SScript && haxelib install SScript");
-					while (true) 
+					var o = p.stdout.readLine();
+					if (o.trim() == "Done")
 					{
-						var o = p.stdout.readLine();
-						if (o.trim() == "Done")
-						{
-							p.close();
-							break;
-						}
+						p.close();
+						break;
 					}
-					p = null;
+				}
+				p = null;
 					
-					log("");
-					log("Done.");
-					log(long);
-					Sys.exit(1);
-				}
-				else if (["no", "n"].contains(r.toLowerCase().trim()))
-				{
-					log("");
-					log("Continuing...");
-				}
-				else if (r.toLowerCase().trim() == 'd')
-				{
-					log("");
-					log("Updater will never be shown again. Continuing...");
-					File.saveContent(settingsPath, "1");
-				}
-				else 
-				{
-					log("Invalid answer given, aborting.");
-					log(long);
-					Sys.exit(1);
-				}
+				log();
+				log("Done.");
+				log(long);
+				Sys.exit(1);
+			}
+			else if (["no", "n"].contains(r.toLowerCase().trim()))
+			{
+				log();
+				log("Continuing...");
+			}
+			else 
+			{
+				log("Invalid answer given, aborting.");
+				log(long);
+				Sys.exit(1);
 			}
 			#end
 		}
@@ -128,7 +118,7 @@ class Macro
 		#end
 		
 		log(long);
-		log("");
+		log();
 
 		#if sys
 		var pushedDefines:Array<String> = [];
@@ -165,14 +155,11 @@ class Macro
 		#end))
 		#if (openfl < "9.2.0") Context.fatalError('Your openfl is outdated (${defines.get('openfl')}), please update openfl', (macro null).pos) #else Context.fatalError('You cannot use \'openflPos\' without targeting openfl', (macro null).pos) #end;
 
-		if (defines.get("dce") != "std")
-			Context.fatalError("SScript needs DCE to be std to work properly", (macro null).pos);
-
 		Compiler.define('loop_unroll_max_cost', '25'); // Haxe will try to unroll big loops which may cause memory leaks, so max cost is downgraded to 25 from 250
 		return macro {}
 	}
 
-	public static function log(log:String)
+	public static function log(?log:String = "")
 	{
 		#if sys
 		Sys.println(log);
@@ -191,16 +178,6 @@ class Macro
 			env += '/';
 
 		return env + 'defines.cocoa';
-	}
-	static function get_settingsPath():String 
-	{
-		var env:String = if (isWindows) Sys.getEnv('USERPROFILE') else Sys.getEnv('HOME');
-		if (isWindows && !env.endsWith('\\'))
-			env += '\\';
-		else if (!isWindows && !env.endsWith('/'))
-			env += '/';
-
-		return env + 'settings.cocoa';
 	}
 	#end
 }

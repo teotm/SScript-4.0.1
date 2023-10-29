@@ -1,27 +1,18 @@
-**Discontinued since September 18, 2023.**
 
-![SScriptLogo](https://github.com/TheWorldMachinima/SScript/assets/114953508/01fba6f6-caeb-4aa7-af4e-58b9d98984fc)
+
+![TeaLogo](https://i.hizliresim.com/3o2yt2d.png)
 
 # SScript
 
-S(uperlative)Script is an easy to use Haxe script parser and interpreter. It aims to support all of the Haxe structures while being fast and easy to use.
-
-<details>
-  <summary>About Classes</summary>
-  Until 5.0.0, SScript used hscript-ex library by ianharrigan for class support.
-
-  This was removed because it was only slowing development and it was not working at all.
-  Unless hscript-ex gets updated, class support is not coming back.
-</details>
+SScript is an easy to use Haxe script tool that aims to be simple while supporting all Haxe structures.
 
 ## Installation
 `haxelib install SScript`
 
 Enter this command in command prompt to get the latest release from Haxe library.
 
-------------
 
-`haxelib git SScript https://github.com/TheWorldMachinima/SScript.git`
+`haxelib git SScript https://github.com/TahirKarabekiroglu/SScript.git`
 
 Enter this command in command prompt to get the latest git release from Github. 
 Git releases have the latest features but they are unstable and can cause problems.
@@ -34,30 +25,12 @@ After installing SScript, don't forget to add it to your Haxe project.
 Add this to `Project.xml` to add SScript to your OpenFL project:
 ```xml
 <haxelib name="SScript"/>
-<haxedef name="hscriptPos"/>
 ```
-
-##### Enabling OpenFL Support 
-SScript has support OpenFL, enabling it will replace the `sys` library with the `openfl` one. That means you can use SScript with HTML5 or any other OpenFL target.
-
-To enable OpenFL support, add this line to `Project.xml`:
-```xml
-<haxedef name="openflPos"/>
-```
-
-This feature is supported on version 9.2.1 or higher.
-Also remember that you can't define this flag on vanilla projects.
-
-------------
-
 ### Haxe Projects
 Add this to `build.hxml` to add SScript to your Haxe build.
 ```hxml
 -lib SScript
--D hscriptPos
 ```
-
-Flag `hscriptPos` is needed for error handling at runtime. It is optional but definitely recommended.
 
 ## Usage
 To use SScript, you will need a file or a script. Using a file is recommended.
@@ -65,16 +38,13 @@ To use SScript, you will need a file or a script. Using a file is recommended.
 ### Using without a file
 ```haxe
 var script:tea.SScript = {}; // Create a new SScript class
-script.doString("
-	import Math; // Importing Math is unnecessary since SScript will set basic classes to script instance including Math but we do it just in case
-	
+script.doScript("
 	function returnRandom():Float
 		return Math.random() * 100;
 "); // Implement the script
 var call = script.call('returnRandom');
 var randomNumber:Float = call.returnValue; // Access the returned value with returnValue
 ```
-Usage of `doString` should be minimalized.
 
 ### Using with a file
 ```haxe
@@ -82,50 +52,8 @@ var script:tea.SScript = new tea.SScript("script.hx"); // Has the same contents 
 var randomNumber:Float = script.call('returnRandom').returnValue;
 ```
 
-------------
-
-## Preprocessing Values
-**This feature is not available on these targets:**
-- JavaScript
-- Flash
-- ActionScript 3
-
-You can preprocess values in Normal and Ex mode.
-This feature is available in vanilla and OpenFL.
-
-Example:
-```haxe
-#if sys
-trace('sys is activated');
-#end
-
-#if (haxe > 4.3)
-trace('haxe is bigger than 4.3');
-#elseif (haxe == "4.3.0")
-trace('haxe is 4.3');
-#elseif (haxe >= "4.2")
-trace('Haxe is between 4.2 and 4.3');
-#else
-trace('Haxe is older than 4.2');
-#end
-```
-
-This feature works with libraries and other flags too.
-If a flag has no value, like `sys`, their value will be `"1"`.
-So you can check flags with no value like this:
-
-```haxe
-#if !sys
-trace('sys is not active');
-#elseif (sys == "1")
-trace('sys is active');
-#end
-```
-
-------------
-
 ## Using Haxe 4.3.0 Syntaxes
-SScript supports both `?.` and `??` sytnaxes including `??=`.
+SScript supports both `?.` and `??` syntaxes including `??=`.
 
 ```haxe
 import tea.SScript;
@@ -134,7 +62,7 @@ class Main
 	static function main()
 	{
 		var script:SScript = {};
-		script.doString("
+		script.doScript("
 			var string:String = null;
 			trace(string.length); // Throws an error
 			trace(string?.length); // Doesn't throw an error and returns null
@@ -145,36 +73,6 @@ class Main
 }
 ```
 
-------------
-
-## Setting Enum Abstracts
-Since version 5.1.0, SScript can set enum abstracts to its variables.
-
-Enum abstracts do not exist during runtime, so SScript can convert them 
-to Dynamic type and set to its variables.
-
-Example usage:
-```haxe
-import tea.SScript;
-enum abstract EnumAbst(Float)
-{
-	var VALUE = 0;
-	var VALUE2 = 0.1;
-}
-
-class Main
-{
-	static function main()
-	{
-		var script:SScript = new SScript();
-		script.setEnumAbstract(tools.EnumAbstractTools.enumAbstractToDynamic(EnumAbst), "EnumAbst");
-		script.doString("return EnumAbst.VALUE + EnumAbst.VALUE2;");
-		trace(script.returnValue); // 0.1
-	}
-}
-```
-------------
-
 ## Extending SScript
 You can create a class extending SScript to customize it better.
 ```haxe
@@ -184,7 +82,7 @@ class SScriptEx extends tea.SScript
 	{
 		super.preset();
 		
-		// Only use 'set', 'setClass' or 'setClassString' in 'preset', avoid using 'interp.variables.set'!
+		// Only use 'set', 'setClass' or 'setClassString' in preset
 		// Macro classes are not allowed to be set
 		setClass(StringTools);
 		set('NaN', Math.NaN);
@@ -192,7 +90,76 @@ class SScriptEx extends tea.SScript
 	}
 }
 ```
-It is recommended to override only `preset`, other functions were not written with overridability in mind.
+Extend other functions only if you know what you're doing.
 
-## Contact
-If you have any questions or requests, open an issue here or message me on my Discord (tahirkarabekiroglu).
+## Calling Methods from Tea's
+You can call methods and receive their return value from Tea's using `call` function.
+It needs one obligatory argument (function name) and one optional argument (function arguments array).
+
+using `call` will return a structure that contains the return value, if calling has been successful, exceptions if it did not, called function name and script file name of the Tea.
+
+Example:
+```haxe
+var tea:tea.SScript = {};
+tea.doScript('
+	function method()
+	{
+		return 2 + 2;
+	}
+');
+var call = tea.call('method');
+trace(call.returnValue); // 4
+
+tea.doScript('
+	function method()
+	{
+		var num:Int = 1.1;
+		return num;
+	}
+')
+
+var call = tea.call('method');
+trace(call.returnValue, call.exceptions[0]); // null, Float should be Int
+```
+
+## Global Variables
+With SScript, you can set variables to all running Tea's.
+Example:
+
+```haxe
+var tea:tea.SScript = {};
+tea.set('variable', 1);
+tea.doScript('
+	function returnVar()
+	{
+		return variable + variable2;
+	}
+');
+
+tea.SScript.globalVariables.set('variable2', 2);
+trace(tea.call('returnVar').returnValue); // 3
+```
+
+## Special Object
+Special object is an object that'll get checked if a variable is not found in a Tea.
+A special object cannot be a basic type like Int, Float, String, Array and Bool.
+
+Special objects are useful for OpenFL and Flixel states.
+
+Example:
+```haxe
+import tea.SScript;
+
+class PlayState extends flixel.FlxState 
+{
+	var sprite:flixel.FlxSprite;
+	override function create()
+	{
+		sprite = new flixel.FlxSprite();
+
+		var newScript:SScript = new SScript();
+		newScript.setSpecialObject(this);
+		newScript.doScript("sprite.visible = false;");
+	}
+}
+```

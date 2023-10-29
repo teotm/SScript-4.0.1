@@ -61,9 +61,9 @@ class Interp {
 
 	var script : SScript;
 
-	#if hscriptPos
 	var curExpr : Expr;
-	#end
+
+	var specialObject : {obj:Dynamic , ?includeFunctions:Bool , ?exclusions:Array<String>} = {obj : null , includeFunctions: null , exclusions: null };
 
 	public inline function setScr(s)
 	{
@@ -108,10 +108,8 @@ class Interp {
 	}
 
 	public function posInfos(): PosInfos {
-		#if hscriptPos
-			if (curExpr != null)
-				return cast { fileName : curExpr.origin, lineNumber : curExpr.line };
-		#end
+		if (curExpr != null)
+			return cast { fileName : curExpr.origin, lineNumber : curExpr.line };
 		return cast { fileName : "SScript", lineNumber : 0 };
 	}
 
@@ -144,7 +142,7 @@ class Interp {
 		binops.set("||",function(e1,e2) return me.expr(e1) == true || me.expr(e2) == true);
 		binops.set("&&",function(e1,e2) return me.expr(e1) == true && me.expr(e2) == true);
 		binops.set("=",assign);
-		#if hscriptPos binops.set("is",checkIs); #end
+		binops.set("is",checkIs);
 		binops.set("...",function(e1,e2) return new InterpIterator(me, e1, e2));
 		assignOp("+=",function(v1:Dynamic,v2:Dynamic) return v1 + v2);
 		assignOp("-=",function(v1:Float,v2:Float) return v1 - v2);
@@ -159,7 +157,6 @@ class Interp {
 		assignOp(">>>=",function(v1,v2) return v1 >>> v2);
 	}
 
-	#if hscriptPos
 	function checkIs(e1,e2) : Bool
 	{
 		var me = this;
@@ -186,7 +183,6 @@ class Interp {
 
 		return Std.isOfType(expr1, expr2);
 	}
-	#end
 
 	function coalesce(e1,e2) : Dynamic
 	{
@@ -301,10 +297,8 @@ class Interp {
 	}
 
 	function increment( e : Expr, prefix : Bool, delta : Int ) : Dynamic {
-		#if hscriptPos
 		curExpr = e;
 		var e = e.e;
-		#end
 		switch(e) {
 		case EIdent(id):
 			var l = locals.get(id);
@@ -422,9 +416,9 @@ class Interp {
 		}
 	}
 
-	inline function error(e : #if hscriptPos ErrorDef #else Error #end, rethrow=false ) : Dynamic {
+	inline function error(e : ErrorDef , rethrow=false ) : Dynamic {
 		if (resumeError)return null;
-		#if hscriptPos var e = new Error(e, curExpr.pmin, curExpr.pmax, curExpr.origin, curExpr.line); #end
+		var e = new Error(e, curExpr.pmin, curExpr.pmax, curExpr.origin, curExpr.line);
 		if( rethrow ) this.rethrow(e) else throw e;
 		return null;
 	}
@@ -442,16 +436,20 @@ class Interp {
 		if( l != null )
 			return l.r;
 		var v = variables.get(id);
+		if( specialObject != null && specialObject.obj != null )
+		{
+			var field = Reflect.getProperty(specialObject.obj,id);
+			if( field != null && (specialObject.includeFunctions || Type.typeof(field) != TFunction) && (specialObject.exclusions == null || !specialObject.exclusions.contains(id)) )
+				return field;
+		}
 		if( v==null && !variables.exists(id) )
 			error(EUnknownVariable(id));
 		return v;
 	}
 
 	public function expr( e : Expr ) : Dynamic {
-		#if hscriptPos
 		curExpr = e;
 		var e = e.e;
-		#end
 		switch( e ) {
 		case EConst(c):
 			switch( c ) {
@@ -566,7 +564,7 @@ class Interp {
 				error(EInvalidOp(op));
 			}
 		case ECall(e,params):
-			var id = switch(#if hscriptPos e.e #else e #end){
+			var id = switch( e.e ){
 				case EIdent(v,i):
 					v;
 				default: null;
@@ -617,6 +615,7 @@ class Interp {
 			}
 			else 
 			{
+				#if !macro
 				var map = macro.Macro.allClassesAvailable;
 				var cl = new Map<String, Class<Dynamic>>();
 				for( i => k in map )
@@ -644,6 +643,7 @@ class Interp {
 
 				for( i => k in cl )
 					variables[i] = k;
+				#end
 			}
 
 			return null;
@@ -655,7 +655,7 @@ class Interp {
 		case EUsing( e, c ):
 			var stringTools = c == 'StringTools' && e == StringTools;
 
-			if( c != null && e != null )
+			if( c != null && e != null && !stringTools )
 				variables.set( c , e );
 			if( stringTools )
 				usingStringTools = true;

@@ -28,7 +28,7 @@ abstract SScriptVer(Null<Int>)
 
         var me:Int = toInt();
         var me2:SScriptVer = fromString(toString());
-        var http = new Http('https://raw.githubusercontent.com/TheWorldMachinima/SScript/testing/gitVer.txt');
+        var http = new Http('https://raw.githubusercontent.com/TahirKarabekiroglu/SScript/testing/gitVer.txt');
         http.onData = function(data:String)
         {
             me2 = fromString(data);
