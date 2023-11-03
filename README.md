@@ -6,6 +6,9 @@
 
 SScript is an easy to use Haxe script tool that aims to be simple while supporting all Haxe structures.
 
+## Contribution
+If you have an issue with SScript or have a suggestion, you can always open an issue here. However, pull requests are NOT welcome and will be ignored.
+
 ## Installation
 `haxelib install SScript`
 
