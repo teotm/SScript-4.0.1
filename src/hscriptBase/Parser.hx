@@ -98,7 +98,7 @@ class Parser {
 	var oldTokenMax : Int;
 	var tokens : List<{ min : Int, max : Int, t : Token }>;
 
-	final notAllowedFieldNames:Array<String> = {
+	static final notAllowedFieldNames:Array<String> = {
 		var keys = Tools.keys.copy();
 		for (i in ["this", "null", "true", "false"])
 			keys.push(i);
@@ -167,7 +167,7 @@ class Parser {
 			idents[identChars.charCodeAt(i)] = true;
 	}
 
-	public function parseString( s : String, ?origin : String = "hscript" ) {
+	public function parseString( s : String, ?origin : String = "SScript" ) {
 		initParser(origin);
 		input = s;
 		readPos = 0;
@@ -557,8 +557,6 @@ class Parser {
 	function parseStructure(id, ?d : DynamicToken) {
 		var p1 = tokenMin;
 		return switch( id ) {
-		case "enum":
-			return null;
 		case "if":
 			ensure(TPOpen);
 			var cond = parseExpr();

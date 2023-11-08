@@ -72,7 +72,7 @@ class SScript
 	/**
 		SScript version abstract, used for version checker.  
 	**/
-	public static var VERSION(default, null):SScriptVer = new SScriptVer(5, 2, 0);
+	public static var VERSION(default, null):SScriptVer = new SScriptVer(7, 7, 0);
 	
 	/**
 		If not null, assigns all scripts to check or ignore type declarations.
@@ -753,6 +753,12 @@ class SScript
 		setClass(File);
 		setClass(FileSystem);
 		setClass(Sys);
+		#end
+
+		#if SUPERLATIVE_INCLUDE_ALL
+		for (i => k in macro.Macro.allClassesAvailable)
+			if (!macro.Macro.macroClasses.contains(k))
+				set(i, k);
 		#end
 	}
 

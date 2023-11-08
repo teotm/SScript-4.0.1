@@ -40,15 +40,6 @@ class Tools {
 		"extends", "implements", "in", "macro", "new", "null", "return", "throw", "from", "to", "super", "is"
 	];
 
-	public static function getIdent( e : Expr ) : String {
-		return switch (expr(e)) {
-			case EIdent(v): v;
-			case EField(e,f): getIdent(e);
-			case EArray(e,i): getIdent(e);
-			default: null;
-		}
-	}
-
 	public static function ctToType( ct : CType ):String {
 		var ctToType:(ct:CType)->String = function(ct)
 		{
