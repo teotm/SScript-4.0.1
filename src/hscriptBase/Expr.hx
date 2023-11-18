@@ -30,6 +30,7 @@ enum Const {
 	#end
 }
 
+#if hscriptPos
 typedef Expr = {
 	var e : ExprDef;
 	var pmin : Int;
@@ -37,44 +38,46 @@ typedef Expr = {
 	var origin : String;
 	var line : Int;
 }
-
 enum ExprDef {
+#else
+typedef ExprDef = Expr;
+enum Expr {
+#end
 	EConst( c : Const );
 	EIdent( v : String , ?isFinal : Bool );
-	EVar( n : String, ?t : CType, ?e : Expr , ?g : Array<String> );
-	EFinal( f : String , ?t : CType , ?e : Expr );
+	EVar( n : String, ?t : CType, ?e : Expr , ?p : TrickyToken , ?g : Array<String> );
+	EFinal( f : String , ?t : CType , ?e : Expr , ?p : TrickyToken );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String );
 	EBinop( op : String, e1 : Expr, e2 : Expr );
-	ESwitchBinop( p : Expr , e1 : Expr , e2 : Expr );
 	EUnop( op : String, prefix : Bool, e : Expr );
 	ECall( e : Expr, params : Array<Expr> );
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
 	EWhile( cond : Expr, e : Expr );
 	EFor( v : String, it : Expr, e : Expr );
-	ECoalesce( e1 : Expr , e2 : Expr , assign : Bool);
-	ESafeNavigator( e1 : Expr , f : String );
+	ECoalesce(e1 : Expr , e2 : Expr , assign : Bool);
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?d : DynamicToken );
+	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType , ?p : TrickyToken , ?d : DynamicToken );
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EArrayDecl( e : Array<Expr> );
-	ENew( cl : String, params : Array<Expr> , ?subIds : Array<String> );
+	ENew( cl : String, params : Array<Expr> );
 	EThrow( e : Expr );
 	ETry( e : Expr, v : String, t : Null<CType>, ecatch : Expr );
 	EObject( fl : Array<{ name : String, e : Expr }> );
 	ETernary( cond : Expr, e1 : Expr, e2 : Expr );
-	ESwitch( e : Expr, cases : Array<{ values : Array<Expr>, expr : Expr , ifExpr : Expr }>, ?defaultExpr : Expr);
+	ESwitch( e : Expr, cases : Array<{ values : Array<Expr>, expr : Expr }>, ?defaultExpr : Expr);
 	EDoWhile( cond : Expr, e : Expr);
 	EUsing( op : Dynamic , n : String );
-	EImport( i : Dynamic, c : String , ?asIdent : String );
-	EImportStar( pkg : String );
+	EImport( i : Dynamic, c : String , ?ps : Array < Dynamic > );
 	EPackage( ?p : String );
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 }
+
+typedef TrickyToken = { f : String , v : Bool , n : String };
 
 typedef DynamicToken = { v : Bool };
 
@@ -91,6 +94,7 @@ enum CType {
 	CTNamed( n : String, t : CType );
 }
 
+#if hscriptPos
 class Error {
 	public var e : ErrorDef;
 	public var pmin : Int;
@@ -109,6 +113,9 @@ class Error {
 	}
 }
 enum ErrorDef {
+#else
+enum Error {
+#end
 	EDuplicate( v : String );
 	EInvalidChar( c : Int );
 	EUnexpected( s : String );
@@ -125,6 +132,7 @@ enum ErrorDef {
 	EInvalidFinal( ?v : String );
 	EUnexistingField( f : Dynamic , f2 : Dynamic );
 	EUnknownIdentifier( s : String );
+	EExpectedField( v : String );
 	EUpperCase( );
 }
 

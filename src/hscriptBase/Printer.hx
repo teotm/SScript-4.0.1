@@ -22,7 +22,6 @@
 package hscriptBase;
 import hscriptBase.Expr;
 
-@:keep
 class Printer {
 
 	var buf : StringBuf;
@@ -114,7 +113,7 @@ class Printer {
 			add("??NULL??");
 			return;
 		}
-		switch( e.e ) {
+		switch( #if hscriptPos e.e #else e #end ) {
 		case EConst(c):
 			switch( c ) {
 			case CInt(i): add(i);
@@ -164,7 +163,7 @@ class Printer {
 		case ECall(e, args):
 			if( e == null )
 				expr(e);
-			else switch( e.e ) {
+			else switch( #if hscriptPos e.e #else e #end ) {
 			case EField(_), EIdent(_), EConst(_):
 				expr(e);
 			default:
@@ -323,26 +322,6 @@ class Printer {
 			add(" : ");
 			addType(t);
 			add(")");
-		case EImport(n, _, asIdent ):
-			var n = Type.getClassName(n);
-			if( n == null )
-				return;
-
-			add("import ");
-			if( asIdent!=null && asIdent.length>0 ){
-				add(n);
-				add(" as ");
-				add(asIdent);
-			}
-			else 
-				add(n);
-		case EUsing(n,_):
-			var n = Type.getClassName(n);
-			if( n == null )
-				return;
-
-			add("using ");
-			add(n);
 		default:
 		}
 	}
@@ -352,26 +331,31 @@ class Printer {
 	}
 
 	public static function errorToString( e : Expr.Error ) {
-		var message = switch( e.e ) {
+		var message = switch( #if hscriptPos e.e #else e #end ) {
 			case EInvalidChar(c): "Invalid character: '"+(StringTools.isEof(c) ? "EOF" : String.fromCharCode(c))+"' ("+c+")";
-			case EUnexpected(s): "Unexpected " + s;
+			case EUnexpected(s): "Unexpected \""+s+"\"";
 			case EUnterminatedString: "Unterminated string";
 			case EUnterminatedComment: "Unterminated comment";
 			case EInvalidPreprocessor(str): "Invalid preprocessor (" + str + ")";
 			case EUnknownVariable(v): "Unknown variable: "+v;
 			case EInvalidIterator(v): "Invalid iterator: "+v;
 			case EInvalidOp(op): "Invalid operator: "+op;
-			case EInvalidAccess(f): "Tried to access a null variable " + f;
+			case EInvalidAccess(f): "Invalid access to field " + f;
 			case ECustom(msg): msg;
 			case EInvalidFinal(v): "You cannot reassign a value to the final variable " + "\"" + v + "\"" + ".";
 			case EUnmatchingType(v,t,n): t + " should be " + v + "" + if(n != null) ' for variable "$n".' else ".";
-			case EUnexistingField(f,f2): f2 + " has no field " + f;
+			case EUnexistingField(f,f2): "Field " + f2 + " does not exist in " + f + ".";
 			case EUnknownIdentifier(v): "Unknown identifier: "  + v + ".";
 			case EUpperCase: "Package name cannot have capital letters.";
 			case EDuplicate(v): "Duplicate class field declaration (" + v + ").";
+			case EExpectedField(v): "Expected \"public\" or \"private\" for " + v + ", couldn't get any.";
 			case EFunctionAssign(f): "Cannot rebind this method (" + f + ") : please use 'dynamic' before method declaration";
 		};
+		#if hscriptPos
 		return e.origin + ":" + e.line + ": " + message;
+		#else
+		return message;
+		#end
 	}
 
 
